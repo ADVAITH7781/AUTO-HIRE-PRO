@@ -12,13 +12,15 @@ CSV_FILE = "companies.csv"
 def load_data():
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
-        # Ensure 'Role' column exists for backward compatibility
+        # Ensure columns exist for backward compatibility
         if "Role" not in df.columns:
             df["Role"] = "Open Role"
+        if "JD_File_Path" not in df.columns:
+            df["JD_File_Path"] = None
         return df
     else:
         # Create initial dataframe if file doesn't exist
-        df = pd.DataFrame(columns=["Company", "Role", "JD", "ResumeThreshold", "AptitudeThreshold"])
+        df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
         return df
 
 def save_data(df):
@@ -130,16 +132,19 @@ def main():
                     with st.container():
                         st.subheader(f"📄 {company_data['Role']} at {selected_company}")
                         
-                        # Download JD Button
-                        st.download_button(
-                            label="📥 Download Job Description",
-                            data=company_data["JD"],
-                            file_name=f"{selected_company}_JD.txt",
-                            mime="text/plain"
-                        )
+                        # Download JD Button Logic
+                        jd_file_path = company_data.get("JD_File_Path")
+                        if jd_file_path and os.path.exists(jd_file_path):
+                            with open(jd_file_path, "rb") as f:
+                                st.download_button(
+                                    label="📥 Download Job Description (PDF/DOCX)",
+                                    data=f,
+                                    file_name=os.path.basename(jd_file_path),
+                                    mime="application/octet-stream"
+                                )
+                        else:
+                            st.warning("⚠️ Job Description file not available for download.")
                         
-                        st.markdown("---")
-                        st.markdown(company_data["JD"])
                         st.markdown("---")
 
                         # Application Form
@@ -217,16 +222,6 @@ def main():
                         uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
                         aptitude_threshold = st.slider("Aptitude Score Threshold", 0, 40, 25)
                     
-                    jd_text = ""
-                    if uploaded_file is not None:
-                        if uploaded_file.name.endswith(".pdf"):
-                            jd_text = extract_text_from_pdf(uploaded_file)
-                        elif uploaded_file.name.endswith(".docx"):
-                            jd_text = extract_text_from_docx(uploaded_file)
-                        st.success("✅ Text extracted from file!")
-
-                    jd = st.text_area("Job Description Content", value=jd_text, height=200)
-                    
                     st.markdown("<br>", unsafe_allow_html=True)
                     submit = st.form_submit_button("💾 Save Configuration")
 
@@ -234,17 +229,47 @@ def main():
                 if not company:
                     st.error("⚠️ Company Name is required!")
                 else:
+                    # Handle File Upload
+                    jd_text = ""
+                    jd_file_path = None
+                    
+                    if uploaded_file is not None:
+                        # Create directory
+                        if not os.path.exists("job_descriptions"):
+                            os.makedirs("job_descriptions")
+                        
+                        # Save file
+                        jd_file_path = os.path.join("job_descriptions", uploaded_file.name)
+                        with open(jd_file_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        
+                        # Extract text for scoring (silent)
+                        if uploaded_file.name.endswith(".pdf"):
+                            jd_text = extract_text_from_pdf(uploaded_file)
+                        elif uploaded_file.name.endswith(".docx"):
+                            jd_text = extract_text_from_docx(uploaded_file)
+                        st.success("✅ JD File Uploaded & Processed!")
+                    else:
+                        # If no new file, try to keep existing data if updating
+                        if company in df["Company"].values:
+                            existing_row = df[df["Company"] == company].iloc[0]
+                            jd_text = existing_row["JD"]
+                            jd_file_path = existing_row.get("JD_File_Path")
+
                     new_data = {
                         "Company": company,
                         "Role": role if role else "Open Role",
-                        "JD": jd,
+                        "JD": jd_text,
+                        "JD_File_Path": jd_file_path,
                         "ResumeThreshold": resume_threshold,
                         "AptitudeThreshold": aptitude_threshold
                     }
                     
                     if company in df["Company"].values:
                         # Update existing row
-                        df.loc[df["Company"] == company, ["Role", "JD", "ResumeThreshold", "AptitudeThreshold"]] = [role if role else "Open Role", jd, resume_threshold, aptitude_threshold]
+                        df.loc[df["Company"] == company, ["Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]] = [
+                            role if role else "Open Role", jd_text, jd_file_path, resume_threshold, aptitude_threshold
+                        ]
                         st.success(f"✅ Updated details for {company}")
                     else:
                         # Add new row
