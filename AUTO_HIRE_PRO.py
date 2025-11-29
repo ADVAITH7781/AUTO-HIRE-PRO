@@ -33,83 +33,162 @@ def extract_text_from_docx(file):
     return text
 
 # ---------------- Streamlit UI ----------------
+# ---------------- Streamlit UI ----------------
 def main():
     st.set_page_config(page_title="Auto Hire Pro", page_icon="🚀", layout="wide")
+
+    # Custom CSS for Professional Theme
+    st.markdown("""
+        <style>
+        /* Main Background */
+        .stApp {
+            background-color: #f8f9fa;
+        }
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background-color: #2c3e50;
+        }
+        [data-testid="stSidebar"] * {
+            color: #ecf0f1 !important;
+        }
+        
+        /* Headers */
+        h1, h2, h3 {
+            color: #2c3e50;
+            font-family: 'Helvetica Neue', sans-serif;
+        }
+        
+        /* Buttons */
+        .stButton>button {
+            background-color: #2980b9;
+            color: white;
+            border-radius: 5px;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+        }
+        .stButton>button:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        /* Cards/Containers */
+        .css-1r6slb0 {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Success Messages */
+        .stSuccess {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
     # Sidebar Navigation
     st.sidebar.title("Navigation")
+    st.sidebar.markdown("---")
     app_mode = st.sidebar.radio("Go to", ["Candidate View", "Admin Panel"])
+    st.sidebar.markdown("---")
+    st.sidebar.info("Auto Hire Pro v1.0")
 
     # Load current data
     df = load_data()
 
     # ---------------- CANDIDATE VIEW ----------------
     if app_mode == "Candidate View":
-        st.title("🚀 Job Openings")
-        st.markdown("Explore and apply for the best opportunities!")
+        st.title("🚀 Career Opportunities")
+        st.markdown("### Find your dream job and apply today!")
+        st.markdown("---")
 
         if df.empty:
-            st.info("No job openings available at the moment.")
+            st.info("No job openings available at the moment. Please check back later.")
         else:
-            # Job Selection
-            company_list = df["Company"].unique().tolist()
-            selected_company = st.selectbox("Select a Company", company_list)
-
-            if selected_company:
-                # Get details for selected company
-                company_data = df[df["Company"] == selected_company].iloc[0]
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                st.subheader("Select a Role")
+                # Job Selection
+                company_list = df["Company"].unique().tolist()
+                selected_company = st.selectbox("Choose a Company", company_list)
                 
-                st.subheader(f"Job Description - {selected_company}")
-                st.markdown("---")
-                st.write(company_data["JD"])
-                st.markdown("---")
+                if selected_company:
+                    st.info(f"You are viewing details for **{selected_company}**")
 
-                # Application Form
-                st.subheader("📝 Apply Now")
-                with st.form("application_form"):
-                    candidate_email = st.text_input("Your Email Address")
-                    uploaded_resume = st.file_uploader("Upload Your Resume (PDF/DOCX)", type=["pdf", "docx"])
+            with col2:
+                if selected_company:
+                    # Get details for selected company
+                    company_data = df[df["Company"] == selected_company].iloc[0]
                     
-                    apply_btn = st.form_submit_button("Submit Application")
+                    with st.container():
+                        st.subheader(f"📄 Job Description: {selected_company}")
+                        st.markdown("---")
+                        st.markdown(company_data["JD"])
+                        st.markdown("---")
 
-                    if apply_btn:
-                        if not candidate_email or not uploaded_resume:
-                            st.error("⚠️ Please provide both email and resume.")
-                        else:
-                            # Create resumes directory if not exists
-                            if not os.path.exists("resumes"):
-                                os.makedirs("resumes")
+                        # Application Form
+                        st.subheader("📝 Submit Your Application")
+                        with st.form("application_form"):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                candidate_email = st.text_input("Email Address", placeholder="you@example.com")
+                            with c2:
+                                uploaded_resume = st.file_uploader("Upload Resume", type=["pdf", "docx"])
                             
-                            # Save Resume
-                            resume_path = os.path.join("resumes", f"{selected_company}_{candidate_email}_{uploaded_resume.name}")
-                            with open(resume_path, "wb") as f:
-                                f.write(uploaded_resume.getbuffer())
-                            
-                            st.success(f"✅ Application Submitted Successfully for {selected_company}!")
-                            st.balloons()
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            apply_btn = st.form_submit_button("🚀 Submit Application")
+
+                            if apply_btn:
+                                if not candidate_email or not uploaded_resume:
+                                    st.error("⚠️ Please provide both email and resume.")
+                                else:
+                                    # Create resumes directory if not exists
+                                    if not os.path.exists("resumes"):
+                                        os.makedirs("resumes")
+                                    
+                                    # Save Resume
+                                    resume_path = os.path.join("resumes", f"{selected_company}_{candidate_email}_{uploaded_resume.name}")
+                                    with open(resume_path, "wb") as f:
+                                        f.write(uploaded_resume.getbuffer())
+                                    
+                                    st.success(f"✅ Application Submitted Successfully for {selected_company}!")
+                                    st.balloons()
 
     # ---------------- ADMIN PANEL ----------------
     elif app_mode == "Admin Panel":
-        st.title("📊 Admin Panel - Manage Job Openings")
+        st.title("📊 Admin Dashboard")
+        st.markdown("### Manage Job Postings & Recruitments")
+        st.markdown("---")
 
-        with st.form("add_company"):
-            company = st.text_input("Company Name")
-            
-            # File Uploader for JD
-            uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
-            
-            jd_text = ""
-            if uploaded_file is not None:
-                if uploaded_file.name.endswith(".pdf"):
-                    jd_text = extract_text_from_pdf(uploaded_file)
-                elif uploaded_file.name.endswith(".docx"):
-                    jd_text = extract_text_from_docx(uploaded_file)
-                st.success("✅ Text extracted from file!")
+        with st.container():
+            st.subheader("➕ Add / Update Company")
+            with st.form("add_company"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    company = st.text_input("Company Name")
+                    resume_threshold = st.slider("Resume Score Threshold", 0, 100, 60)
+                
+                with col2:
+                    uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
+                    aptitude_threshold = st.slider("Aptitude Score Threshold", 0, 40, 25)
+                
+                jd_text = ""
+                if uploaded_file is not None:
+                    if uploaded_file.name.endswith(".pdf"):
+                        jd_text = extract_text_from_pdf(uploaded_file)
+                    elif uploaded_file.name.endswith(".docx"):
+                        jd_text = extract_text_from_docx(uploaded_file)
+                    st.success("✅ Text extracted from file!")
 
-            jd = st.text_area("Job Description", value=jd_text, height=200)
-            resume_threshold = st.number_input("Resume Score Threshold", min_value=0, max_value=100, value=60)
-            aptitude_threshold = st.number_input("Aptitude Score Threshold", min_value=0, max_value=40, value=25)
-            submit = st.form_submit_button("Save / Update Company")
+                jd = st.text_area("Job Description Content", value=jd_text, height=200)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                submit = st.form_submit_button("💾 Save Configuration")
 
         if submit:
             if not company:
@@ -136,12 +215,13 @@ def main():
                 save_data(df)
 
         # Display
-        st.subheader("📌 Current Job Openings")
+        st.markdown("---")
+        st.subheader("📌 Active Job Listings")
         # Reload data to show updates
         df = load_data()
 
         if not df.empty:
-            st.dataframe(df)
+            st.dataframe(df, use_container_width=True)
         else:
             st.info("No companies added yet.")
 
