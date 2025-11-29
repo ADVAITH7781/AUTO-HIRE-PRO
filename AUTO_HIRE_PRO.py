@@ -11,10 +11,14 @@ CSV_FILE = "companies.csv"
 # ---------------- Data Handling ----------------
 def load_data():
     if os.path.exists(CSV_FILE):
-        return pd.read_csv(CSV_FILE)
+        df = pd.read_csv(CSV_FILE)
+        # Ensure 'Role' column exists for backward compatibility
+        if "Role" not in df.columns:
+            df["Role"] = "Open Role"
+        return df
     else:
         # Create initial dataframe if file doesn't exist
-        df = pd.DataFrame(columns=["Company", "JD", "ResumeThreshold", "AptitudeThreshold"])
+        df = pd.DataFrame(columns=["Company", "Role", "JD", "ResumeThreshold", "AptitudeThreshold"])
         return df
 
 def save_data(df):
@@ -32,7 +36,6 @@ def extract_text_from_docx(file):
     text = "\n".join([para.text for para in doc.paragraphs])
     return text
 
-# ---------------- Streamlit UI ----------------
 # ---------------- Streamlit UI ----------------
 def main():
     st.set_page_config(page_title="Auto Hire Pro", page_icon="🚀", layout="wide")
@@ -125,7 +128,16 @@ def main():
                     company_data = df[df["Company"] == selected_company].iloc[0]
                     
                     with st.container():
-                        st.subheader(f"📄 Job Description: {selected_company}")
+                        st.subheader(f"📄 {company_data['Role']} at {selected_company}")
+                        
+                        # Download JD Button
+                        st.download_button(
+                            label="📥 Download Job Description",
+                            data=company_data["JD"],
+                            file_name=f"{selected_company}_JD.txt",
+                            mime="text/plain"
+                        )
+                        
                         st.markdown("---")
                         st.markdown(company_data["JD"])
                         st.markdown("---")
@@ -166,7 +178,7 @@ def main():
 
         if not st.session_state.admin_logged_in:
             # Login Screen
-            st.title("� Admin Login")
+            st.title("🔐 Admin Login")
             st.markdown("Please sign in to access the dashboard.")
             
             with st.form("login_form"):
@@ -187,7 +199,7 @@ def main():
                 st.session_state.admin_logged_in = False
                 st.rerun()
 
-            st.title("�📊 Admin Dashboard")
+            st.title("📊 Admin Dashboard")
             st.markdown("### Manage Job Postings & Recruitments")
             st.markdown("---")
 
@@ -198,6 +210,7 @@ def main():
                     
                     with col1:
                         company = st.text_input("Company Name")
+                        role = st.text_input("Job Role", placeholder="e.g. Software Engineer")
                         resume_threshold = st.slider("Resume Score Threshold", 0, 100, 60)
                     
                     with col2:
@@ -223,6 +236,7 @@ def main():
                 else:
                     new_data = {
                         "Company": company,
+                        "Role": role if role else "Open Role",
                         "JD": jd,
                         "ResumeThreshold": resume_threshold,
                         "AptitudeThreshold": aptitude_threshold
@@ -230,8 +244,8 @@ def main():
                     
                     if company in df["Company"].values:
                         # Update existing row
-                        df.loc[df["Company"] == company, ["JD", "ResumeThreshold", "AptitudeThreshold"]] = [jd, resume_threshold, aptitude_threshold]
-                        st.success(f"✅ Updated thresholds for {company}")
+                        df.loc[df["Company"] == company, ["Role", "JD", "ResumeThreshold", "AptitudeThreshold"]] = [role if role else "Open Role", jd, resume_threshold, aptitude_threshold]
+                        st.success(f"✅ Updated details for {company}")
                     else:
                         # Add new row
                         new_row = pd.DataFrame([new_data])
