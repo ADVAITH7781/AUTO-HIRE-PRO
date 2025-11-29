@@ -205,80 +205,132 @@ def main():
                 st.rerun()
 
             st.title("📊 Admin Dashboard")
-            st.markdown("### Manage Job Postings & Recruitments")
+            
+            # Action Selection
+            action = st.radio("Choose Action", ["Add New Company", "Edit Existing Company", "Delete Company"], horizontal=True)
             st.markdown("---")
 
-            with st.container():
-                st.subheader("➕ Add / Update Company")
+            # ---------------- ADD NEW COMPANY ----------------
+            if action == "Add New Company":
+                st.subheader("➕ Add New Company")
                 with st.form("add_company"):
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         company = st.text_input("Company Name")
                         role = st.text_input("Job Role", placeholder="e.g. Software Engineer")
                         resume_threshold = st.slider("Resume Score Threshold", 0, 100, 60)
-                    
                     with col2:
                         uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
                         aptitude_threshold = st.slider("Aptitude Score Threshold", 0, 40, 25)
                     
                     st.markdown("<br>", unsafe_allow_html=True)
-                    submit = st.form_submit_button("💾 Save Configuration")
+                    submit = st.form_submit_button("💾 Save New Company")
 
-            if submit:
-                if not company:
-                    st.error("⚠️ Company Name is required!")
-                else:
-                    # Handle File Upload
-                    jd_text = ""
-                    jd_file_path = None
-                    
-                    if uploaded_file is not None:
-                        # Create directory
+                if submit:
+                    if not company:
+                        st.error("⚠️ Company Name is required!")
+                    elif company in df["Company"].values:
+                        st.error("⚠️ Company already exists! Use 'Edit Existing Company' to update.")
+                    elif not uploaded_file:
+                        st.error("⚠️ Please upload a Job Description file.")
+                    else:
+                        # Handle File Upload
                         if not os.path.exists("job_descriptions"):
                             os.makedirs("job_descriptions")
                         
-                        # Save file
                         jd_file_path = os.path.join("job_descriptions", uploaded_file.name)
                         with open(jd_file_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         
-                        # Extract text for scoring (silent)
+                        # Extract text (silent)
+                        jd_text = ""
                         if uploaded_file.name.endswith(".pdf"):
                             jd_text = extract_text_from_pdf(uploaded_file)
                         elif uploaded_file.name.endswith(".docx"):
                             jd_text = extract_text_from_docx(uploaded_file)
-                        st.success("✅ JD File Uploaded & Processed!")
-                    else:
-                        # If no new file, try to keep existing data if updating
-                        if company in df["Company"].values:
-                            existing_row = df[df["Company"] == company].iloc[0]
-                            jd_text = existing_row["JD"]
-                            jd_file_path = existing_row.get("JD_File_Path")
 
-                    new_data = {
-                        "Company": company,
-                        "Role": role if role else "Open Role",
-                        "JD": jd_text,
-                        "JD_File_Path": jd_file_path,
-                        "ResumeThreshold": resume_threshold,
-                        "AptitudeThreshold": aptitude_threshold
-                    }
-                    
-                    if company in df["Company"].values:
-                        # Update existing row
-                        df.loc[df["Company"] == company, ["Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]] = [
-                            role if role else "Open Role", jd_text, jd_file_path, resume_threshold, aptitude_threshold
-                        ]
-                        st.success(f"✅ Updated details for {company}")
-                    else:
-                        # Add new row
+                        new_data = {
+                            "Company": company,
+                            "Role": role if role else "Open Role",
+                            "JD": jd_text,
+                            "JD_File_Path": jd_file_path,
+                            "ResumeThreshold": resume_threshold,
+                            "AptitudeThreshold": aptitude_threshold
+                        }
+                        
                         new_row = pd.DataFrame([new_data])
                         df = pd.concat([df, new_row], ignore_index=True)
+                        save_data(df)
                         st.success(f"✅ Added new company: {company}")
+                        st.rerun()
+
+            # ---------------- EDIT EXISTING COMPANY ----------------
+            elif action == "Edit Existing Company":
+                st.subheader("✏️ Edit Company Details")
+                if df.empty:
+                    st.info("No companies to edit.")
+                else:
+                    company_to_edit = st.selectbox("Select Company to Edit", df["Company"].unique())
                     
-                    # Save to CSV
-                    save_data(df)
+                    # Get current data
+                    current_data = df[df["Company"] == company_to_edit].iloc[0]
+                    
+                    with st.form("edit_company"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            # Company name is read-only or just displayed
+                            st.text_input("Company Name", value=company_to_edit, disabled=True)
+                            new_role = st.text_input("Job Role", value=current_data["Role"])
+                            new_resume_thresh = st.slider("Resume Score Threshold", 0, 100, int(current_data["ResumeThreshold"]))
+                        with col2:
+                            st.info(f"Current JD File: {os.path.basename(current_data['JD_File_Path']) if current_data['JD_File_Path'] else 'None'}")
+                            new_uploaded_file = st.file_uploader("Upload New JD (Optional - Overwrites old)", type=["pdf", "docx"])
+                            new_apt_thresh = st.slider("Aptitude Score Threshold", 0, 40, int(current_data["AptitudeThreshold"]))
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        submit_edit = st.form_submit_button("💾 Update Company")
+
+                    if submit_edit:
+                        # Handle File Update
+                        jd_text = current_data["JD"]
+                        jd_file_path = current_data["JD_File_Path"]
+                        
+                        if new_uploaded_file:
+                            if not os.path.exists("job_descriptions"):
+                                os.makedirs("job_descriptions")
+                            
+                            jd_file_path = os.path.join("job_descriptions", new_uploaded_file.name)
+                            with open(jd_file_path, "wb") as f:
+                                f.write(new_uploaded_file.getbuffer())
+                            
+                            if new_uploaded_file.name.endswith(".pdf"):
+                                jd_text = extract_text_from_pdf(new_uploaded_file)
+                            elif new_uploaded_file.name.endswith(".docx"):
+                                jd_text = extract_text_from_docx(new_uploaded_file)
+                        
+                        # Update DataFrame
+                        df.loc[df["Company"] == company_to_edit, ["Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]] = [
+                            new_role, jd_text, jd_file_path, new_resume_thresh, new_apt_thresh
+                        ]
+                        save_data(df)
+                        st.success(f"✅ Updated details for {company_to_edit}")
+                        st.rerun()
+
+            # ---------------- DELETE COMPANY ----------------
+            elif action == "Delete Company":
+                st.subheader("🗑️ Delete Company")
+                if df.empty:
+                    st.info("No companies to delete.")
+                else:
+                    company_to_delete = st.selectbox("Select Company to Delete", df["Company"].unique())
+                    st.warning(f"⚠️ Are you sure you want to delete **{company_to_delete}**? This action cannot be undone.")
+                    
+                    if st.button("❌ Yes, Delete Company"):
+                        # Remove from DataFrame
+                        df = df[df["Company"] != company_to_delete]
+                        save_data(df)
+                        st.success(f"✅ Deleted company: {company_to_delete}")
+                        st.rerun()
 
             # Display
             st.markdown("---")
