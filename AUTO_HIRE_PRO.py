@@ -160,70 +160,97 @@ def main():
 
     # ---------------- ADMIN PANEL ----------------
     elif app_mode == "Admin Panel":
-        st.title("📊 Admin Dashboard")
-        st.markdown("### Manage Job Postings & Recruitments")
-        st.markdown("---")
+        # Initialize session state for login
+        if 'admin_logged_in' not in st.session_state:
+            st.session_state.admin_logged_in = False
 
-        with st.container():
-            st.subheader("➕ Add / Update Company")
-            with st.form("add_company"):
-                col1, col2 = st.columns(2)
+        if not st.session_state.admin_logged_in:
+            # Login Screen
+            st.title("� Admin Login")
+            st.markdown("Please sign in to access the dashboard.")
+            
+            with st.form("login_form"):
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                login_btn = st.form_submit_button("Login")
                 
-                with col1:
-                    company = st.text_input("Company Name")
-                    resume_threshold = st.slider("Resume Score Threshold", 0, 100, 60)
-                
-                with col2:
-                    uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
-                    aptitude_threshold = st.slider("Aptitude Score Threshold", 0, 40, 25)
-                
-                jd_text = ""
-                if uploaded_file is not None:
-                    if uploaded_file.name.endswith(".pdf"):
-                        jd_text = extract_text_from_pdf(uploaded_file)
-                    elif uploaded_file.name.endswith(".docx"):
-                        jd_text = extract_text_from_docx(uploaded_file)
-                    st.success("✅ Text extracted from file!")
-
-                jd = st.text_area("Job Description Content", value=jd_text, height=200)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                submit = st.form_submit_button("💾 Save Configuration")
-
-        if submit:
-            if not company:
-                st.error("⚠️ Company Name is required!")
-            else:
-                new_data = {
-                    "Company": company,
-                    "JD": jd,
-                    "ResumeThreshold": resume_threshold,
-                    "AptitudeThreshold": aptitude_threshold
-                }
-                
-                if company in df["Company"].values:
-                    # Update existing row
-                    df.loc[df["Company"] == company, ["JD", "ResumeThreshold", "AptitudeThreshold"]] = [jd, resume_threshold, aptitude_threshold]
-                    st.success(f"✅ Updated thresholds for {company}")
-                else:
-                    # Add new row
-                    new_row = pd.DataFrame([new_data])
-                    df = pd.concat([df, new_row], ignore_index=True)
-                    st.success(f"✅ Added new company: {company}")
-                
-                # Save to CSV
-                save_data(df)
-
-        # Display
-        st.markdown("---")
-        st.subheader("📌 Active Job Listings")
-        # Reload data to show updates
-        df = load_data()
-
-        if not df.empty:
-            st.dataframe(df, use_container_width=True)
+                if login_btn:
+                    if username == "admin" and password == "admin123":
+                        st.session_state.admin_logged_in = True
+                        st.success("Logged in successfully!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid Username or Password")
         else:
-            st.info("No companies added yet.")
+            # Logout Button
+            if st.sidebar.button("Logout"):
+                st.session_state.admin_logged_in = False
+                st.rerun()
+
+            st.title("�📊 Admin Dashboard")
+            st.markdown("### Manage Job Postings & Recruitments")
+            st.markdown("---")
+
+            with st.container():
+                st.subheader("➕ Add / Update Company")
+                with st.form("add_company"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        company = st.text_input("Company Name")
+                        resume_threshold = st.slider("Resume Score Threshold", 0, 100, 60)
+                    
+                    with col2:
+                        uploaded_file = st.file_uploader("Upload Job Description (PDF/DOCX)", type=["pdf", "docx"])
+                        aptitude_threshold = st.slider("Aptitude Score Threshold", 0, 40, 25)
+                    
+                    jd_text = ""
+                    if uploaded_file is not None:
+                        if uploaded_file.name.endswith(".pdf"):
+                            jd_text = extract_text_from_pdf(uploaded_file)
+                        elif uploaded_file.name.endswith(".docx"):
+                            jd_text = extract_text_from_docx(uploaded_file)
+                        st.success("✅ Text extracted from file!")
+
+                    jd = st.text_area("Job Description Content", value=jd_text, height=200)
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    submit = st.form_submit_button("💾 Save Configuration")
+
+            if submit:
+                if not company:
+                    st.error("⚠️ Company Name is required!")
+                else:
+                    new_data = {
+                        "Company": company,
+                        "JD": jd,
+                        "ResumeThreshold": resume_threshold,
+                        "AptitudeThreshold": aptitude_threshold
+                    }
+                    
+                    if company in df["Company"].values:
+                        # Update existing row
+                        df.loc[df["Company"] == company, ["JD", "ResumeThreshold", "AptitudeThreshold"]] = [jd, resume_threshold, aptitude_threshold]
+                        st.success(f"✅ Updated thresholds for {company}")
+                    else:
+                        # Add new row
+                        new_row = pd.DataFrame([new_data])
+                        df = pd.concat([df, new_row], ignore_index=True)
+                        st.success(f"✅ Added new company: {company}")
+                    
+                    # Save to CSV
+                    save_data(df)
+
+            # Display
+            st.markdown("---")
+            st.subheader("📌 Active Job Listings")
+            # Reload data to show updates
+            df = load_data()
+
+            if not df.empty:
+                st.dataframe(df, use_container_width=True)
+            else:
+                st.info("No companies added yet.")
 
 if __name__ == "__main__":
     main()
