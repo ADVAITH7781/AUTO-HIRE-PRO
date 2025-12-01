@@ -94,109 +94,200 @@ def calculate_score(resume_text, jd_text):
 def main():
     st.set_page_config(page_title="Auto Hire Pro", page_icon="🚀", layout="wide")
 
-    # Custom CSS
+    # Custom CSS - Key Finder Theme
     st.markdown("""
         <style>
-        .stApp { background-color: #f8f9fa; }
-        [data-testid="stSidebar"] { background-color: #2c3e50; }
-        [data-testid="stSidebar"] * { color: #ecf0f1 !important; }
-        h1, h2, h3 { color: #2c3e50; font-family: 'Helvetica Neue', sans-serif; }
-        .stButton>button { background-color: #2980b9; color: white; border-radius: 5px; border: none; padding: 10px 20px; font-weight: bold; }
-        .stButton>button:hover { background-color: #3498db; color: white; }
-        .css-1r6slb0 { background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .stSuccess { background-color: #d4edda; color: #155724; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .stApp { background-color: #FFFFFF; }
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] { 
+            background-color: #222222; 
+            border-right: 1px solid #333;
+        }
+        [data-testid="stSidebar"] * { color: #ffffff !important; }
+        
+        /* Buttons */
+        .stButton>button { 
+            background-color: #FF9F1C; 
+            color: white; 
+            border-radius: 8px; 
+            border: none; 
+            padding: 12px 24px; 
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover { 
+            background-color: #e0890b; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 159, 28, 0.3);
+        }
+        
+        /* Hero Section */
+        .hero-container {
+            position: relative;
+            background-image: url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1351&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 400px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify_content: center;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .hero-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .hero-title span { color: #FF9F1C; }
+        .hero-subtitle {
+            font-size: 1.2rem;
+            font-weight: 300;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        /* Cards */
+        .job-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #FF9F1C;
+            margin-bottom: 15px;
+        }
         </style>
     """, unsafe_allow_html=True)
     
-    st.sidebar.title("Navigation")
-    st.sidebar.markdown("---")
-    app_mode = st.sidebar.radio("Go to", ["Candidate View", "Admin Panel"])
-    st.sidebar.markdown("---")
-    st.sidebar.info("Auto Hire Pro v1.0")
+    # Sidebar Navigation
+    with st.sidebar:
+        st.image("https://cdn-icons-png.flaticon.com/512/1995/1995515.png", width=50)
+        st.title("Auto Hire Pro")
+        st.markdown("---")
+        app_mode = st.radio("Navigate", ["Candidate View", "Admin Panel"])
+        st.markdown("---")
+        st.info("Bring the Spark! ✨")
 
     df = load_data()
     apps_df = load_apps()
 
     # ---------------- CANDIDATE VIEW ----------------
     if app_mode == "Candidate View":
-        # Hero Image
-        st.image("https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1200&q=80", use_container_width=True)
-        
-        st.title("🚀 Career Opportunities")
-        st.markdown("### Find your dream job and apply today!")
-        st.markdown("---")
+        # Custom Hero Section
+        st.markdown("""
+            <div class="hero-container">
+                <div class="hero-overlay"></div>
+                <div class="hero-content">
+                    <div class="hero-title">Drop Resume & <br> Get Your <span>Desired Job!</span></div>
+                    <div class="hero-subtitle">Find Jobs, Employment & Career Opportunities</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
         if df.empty:
             st.info("No job openings available at the moment.")
         else:
-            col1, col2 = st.columns([1, 2])
+            # Search / Filter Section mimicking the "What" and "Where"
+            st.markdown("### 🔍 Find your perfect role")
+            col1, col2 = st.columns([2, 1])
             with col1:
-                st.subheader("Select a Role")
                 company_list = df["Company"].unique().tolist()
-                selected_company = st.selectbox("Choose a Company", company_list)
-                if selected_company:
-                    st.info(f"You are viewing details for **{selected_company}**")
-
+                selected_company = st.selectbox("Select Company / Role", company_list)
             with col2:
-                if selected_company:
-                    company_data = df[df["Company"] == selected_company].iloc[0]
-                    
-                    with st.container():
-                        st.subheader(f"📄 {company_data['Role']} at {selected_company}")
-                        
-                        jd_file_path = company_data.get("JD_File_Path")
-                        if isinstance(jd_file_path, str) and os.path.exists(jd_file_path):
-                            with open(jd_file_path, "rb") as f:
-                                st.download_button("📥 Download Job Description", f, file_name=os.path.basename(jd_file_path))
-                        
-                        st.markdown("---")
-                        st.subheader("📝 Submit Your Application")
-                        with st.form("application_form"):
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                candidate_email = st.text_input("Email Address")
-                            with c2:
-                                uploaded_resume = st.file_uploader("Upload Resume", type=["pdf", "docx"])
-                            
-                            st.markdown("<br>", unsafe_allow_html=True)
-                            apply_btn = st.form_submit_button("🚀 Submit Application")
+                st.markdown("<br>", unsafe_allow_html=True) # Spacer
+                # Just a visual button to match the UI feel
+                st.button("Find Jobs", use_container_width=True)
 
-                            if apply_btn:
-                                if not candidate_email or not uploaded_resume:
-                                    st.error("⚠️ Please provide both email and resume.")
-                                else:
-                                    with st.spinner("Analyzing your resume with AI..."):
-                                        if not os.path.exists("resumes"):
-                                            os.makedirs("resumes")
-                                        
-                                        resume_path = os.path.join("resumes", f"{selected_company}_{candidate_email}_{uploaded_resume.name}")
-                                        with open(resume_path, "wb") as f:
-                                            f.write(uploaded_resume.getbuffer())
-                                        
-                                        # Extract Text
-                                        resume_text = ""
-                                        if uploaded_resume.name.endswith(".pdf"):
-                                            resume_text = extract_text_from_pdf(uploaded_resume)
-                                        elif uploaded_resume.name.endswith(".docx"):
-                                            resume_text = extract_text_from_docx(uploaded_resume)
-                                        
-                                        # Calculate Score
-                                        score = calculate_score(resume_text, company_data["JD"])
-                                        
-                                        # Save Application
-                                        new_app = {
-                                            "Company": selected_company,
-                                            "Role": company_data["Role"],
-                                            "Email": candidate_email,
-                                            "Score": score,
-                                            "Resume_Path": resume_path,
-                                            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                        }
-                                        apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
-                                        save_apps(apps_df)
-                                        
-                                        st.success(f"✅ Application Submitted! Your Resume Match Score: **{score}/100**")
-                                        st.balloons()
+            st.markdown("---")
+
+            if selected_company:
+                company_data = df[df["Company"] == selected_company].iloc[0]
+                
+                # Job Details Card
+                st.markdown(f"""
+                    <div class="job-card">
+                        <h3>{company_data['Role']}</h3>
+                        <p style="color: #666;">at <strong>{selected_company}</strong></p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                col_left, col_right = st.columns([1, 1])
+                
+                with col_left:
+                    st.subheader("Job Description")
+                    jd_file_path = company_data.get("JD_File_Path")
+                    if isinstance(jd_file_path, str) and os.path.exists(jd_file_path):
+                        with open(jd_file_path, "rb") as f:
+                            st.download_button("📥 Download JD File", f, file_name=os.path.basename(jd_file_path))
+                    else:
+                        st.warning("JD File not available.")
+
+                with col_right:
+                    st.subheader("Apply Now")
+                    with st.form("application_form"):
+                        candidate_email = st.text_input("Email Address", placeholder="you@example.com")
+                        uploaded_resume = st.file_uploader("Upload Resume", type=["pdf", "docx"])
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        apply_btn = st.form_submit_button("🚀 Submit Application")
+
+                        if apply_btn:
+                            if not candidate_email or not uploaded_resume:
+                                st.error("⚠️ Please provide both email and resume.")
+                            else:
+                                with st.spinner("Analyzing your resume..."):
+                                    if not os.path.exists("resumes"):
+                                        os.makedirs("resumes")
+                                    
+                                    resume_path = os.path.join("resumes", f"{selected_company}_{candidate_email}_{uploaded_resume.name}")
+                                    with open(resume_path, "wb") as f:
+                                        f.write(uploaded_resume.getbuffer())
+                                    
+                                    # Extract Text
+                                    resume_text = ""
+                                    if uploaded_resume.name.endswith(".pdf"):
+                                        resume_text = extract_text_from_pdf(uploaded_resume)
+                                    elif uploaded_resume.name.endswith(".docx"):
+                                        resume_text = extract_text_from_docx(uploaded_resume)
+                                    
+                                    # Calculate Score
+                                    score = calculate_score(resume_text, company_data["JD"])
+                                    
+                                    # Save Application
+                                    new_app = {
+                                        "Company": selected_company,
+                                        "Role": company_data["Role"],
+                                        "Email": candidate_email,
+                                        "Score": score,
+                                        "Resume_Path": resume_path,
+                                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    }
+                                    apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
+                                    save_apps(apps_df)
+                                    
+                                    st.success(f"✅ Application Submitted! Your Resume Match Score: **{score}/100**")
+                                    st.balloons()
 
     # ---------------- ADMIN PANEL ----------------
     elif app_mode == "Admin Panel":
