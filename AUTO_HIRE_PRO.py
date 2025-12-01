@@ -106,6 +106,9 @@ def main():
 
     # ---------------- CANDIDATE VIEW ----------------
     if app_mode == "Candidate View":
+        # Hero Image
+        st.image("https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1200&q=80", use_container_width=True)
+        
         st.title("🚀 Career Opportunities")
         st.markdown("### Find your dream job and apply today!")
         st.markdown("---")
@@ -203,6 +206,8 @@ def main():
                 st.session_state.admin_logged_in = False
                 st.rerun()
 
+            # Admin Banner
+            st.image("https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80", use_container_width=True)
             st.title("📊 Admin Dashboard")
             
             # Tabs for better organization
