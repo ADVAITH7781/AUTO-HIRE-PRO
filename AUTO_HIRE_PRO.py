@@ -73,12 +73,10 @@ def calculate_score(resume_text, jd_text):
         3. Output ONLY the integer score. Do not output any other text.
         """
         response = model.generate_content(prompt)
-        # Debugging: Print raw response if needed
-        # print(response.text) 
         score = int(''.join(filter(str.isdigit, response.text)))
         return score
     except Exception as e:
-        st.error(f"AI Error: {e}")
+        print(f"Error calculating score: {e}")
         return 0
 
 # ---------------- Streamlit UI ----------------
