@@ -1,7 +1,7 @@
 import google.generativeai as genai
 import os
 
-API_KEY = "AIzaSyBsEF-QP4mHsaimN8CLXQx_z7JxwlK5zoY"
+API_KEY = "AIzaSyC1Qt_5KzEF6kQgX-Dm7rurHbWgHaGFzkQ"
 genai.configure(api_key=API_KEY)
 
 with open("models_output.txt", "w") as f:

@@ -11,7 +11,11 @@ import time
 # ---------------- Config ----------------
 CSV_FILE = "companies.csv"
 APPS_FILE = "applications.csv"
-API_KEY = "AIzaSyBsEF-QP4mHsaimN8CLXQx_z7JxwlK5zoY"  # Replace with env var in production
+try:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+except FileNotFoundError:
+    st.error("⚠️ Secrets file not found! Please create .streamlit/secrets.toml")
+    st.stop()
 
 # Configure Gemini
 genai.configure(api_key=API_KEY)
