@@ -23,8 +23,8 @@ def load_data():
         if "Role" not in df.columns:
             df["Role"] = "Open Role"
         if "JD_File_Path" not in df.columns:
-            df["JD_File_Path"] = None
-        df = df.where(pd.notnull(df), None)
+            df["JD_File_Path"] = ""
+        df = df.fillna("")
         return df
     else:
         df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
@@ -73,10 +73,12 @@ def calculate_score(resume_text, jd_text):
         3. Output ONLY the integer score. Do not output any other text.
         """
         response = model.generate_content(prompt)
+        # Debugging: Print raw response if needed
+        # print(response.text) 
         score = int(''.join(filter(str.isdigit, response.text)))
         return score
     except Exception as e:
-        print(f"Error calculating score: {e}")
+        st.error(f"AI Error: {e}")
         return 0
 
 # ---------------- Streamlit UI ----------------
