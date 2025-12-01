@@ -11,7 +11,7 @@ import time
 # ---------------- Config ----------------
 CSV_FILE = "companies.csv"
 APPS_FILE = "applications.csv"
-API_KEY = "AIzaSyAvmsKTpLumaLDRCrFfGip6m077hi3cXdg"  # Replace with env var in production
+API_KEY = "AIzaSyBsEF-QP4mHsaimN8CLXQx_z7JxwlK5zoY"  # Replace with env var in production
 
 # Configure Gemini
 genai.configure(api_key=API_KEY)
