@@ -62,8 +62,8 @@ def calculate_score(resume_text, jd_text):
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         prompt = f"""
-        You are an expert ATS (Applicant Tracking System).
-        Compare the following Resume with the Job Description.
+        You are an expert and critical ATS (Applicant Tracking System).
+        Your task is to evaluate the Resume against the Job Description (JD) with high scrutiny.
         
         JOB DESCRIPTION:
         {jd_text}
@@ -71,10 +71,17 @@ def calculate_score(resume_text, jd_text):
         RESUME:
         {resume_text}
         
-        Task:
-        1. Evaluate how well the resume matches the JD.
-        2. Provide a single integer score from 0 to 100.
-        3. Output ONLY the integer score. Do not output any other text.
+        EVALUATION CRITERIA:
+        1. **Keywords & Skills**: Does the candidate possess the specific technical skills and tools mentioned in the JD?
+        2. **Experience**: Does the candidate's experience level match the requirements?
+        3. **Relevance**: Is the candidate's background directly relevant to the role?
+        
+        SCORING INSTRUCTIONS:
+        - Be critical. Do not give high scores easily.
+        - A perfect match (100) requires all skills, exact experience, and perfect relevance.
+        - Missing key skills should significantly reduce the score.
+        - Provide a single integer score from 0 to 100.
+        - Output ONLY the integer score. Do not output any other text or explanation.
         """
         response = model.generate_content(prompt)
         score = int(''.join(filter(str.isdigit, response.text)))
