@@ -76,7 +76,7 @@ def calculate_score(resume_text, jd_text):
         score = int(''.join(filter(str.isdigit, response.text)))
         return score
     except Exception as e:
-        print(f"Error calculating score: {e}")
+        st.error(f"AI Error: {e}")
         return 0
 
 # ---------------- Streamlit UI ----------------
