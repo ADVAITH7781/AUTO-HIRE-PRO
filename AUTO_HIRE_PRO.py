@@ -6,6 +6,7 @@ from pypdf import PdfReader
 from docx import Document
 import google.generativeai as genai
 from datetime import datetime
+import time
 
 # ---------------- Config ----------------
 CSV_FILE = "companies.csv"
@@ -253,7 +254,9 @@ def main():
                                 new_data = {"Company": company, "Role": role, "JD": jd_text, "JD_File_Path": jd_path, "ResumeThreshold": resume_threshold, "AptitudeThreshold": aptitude_threshold}
                                 df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
                                 save_data(df)
-                                st.success("✅ Saved!")
+                                st.success("✅ Saved Successfully!")
+                                st.balloons()
+                                time.sleep(2)
                                 st.rerun()
 
                 elif action == "Edit Existing Company":
@@ -273,7 +276,9 @@ def main():
                                     df.loc[df["Company"] == company_to_edit, ["JD", "JD_File_Path"]] = [jd_text, jd_path]
                                 df.loc[df["Company"] == company_to_edit, "Role"] = new_role
                                 save_data(df)
-                                st.success("Updated!")
+                                st.success("✅ Updated Successfully!")
+                                st.balloons()
+                                time.sleep(2)
                                 st.rerun()
 
                 elif action == "Delete Company":
@@ -282,7 +287,9 @@ def main():
                         if st.button("Confirm Delete"):
                             df = df[df["Company"] != to_del]
                             save_data(df)
-                            st.success("Deleted!")
+                            st.success("✅ Deleted Successfully!")
+                            st.balloons()
+                            time.sleep(2)
                             st.rerun()
 
             st.markdown("---")
