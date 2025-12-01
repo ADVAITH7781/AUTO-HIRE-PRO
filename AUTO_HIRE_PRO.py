@@ -103,7 +103,12 @@ def main():
             font-family: 'Poppins', sans-serif;
         }
         
-        .stApp { background-color: #FFFFFF; }
+        .stApp { 
+            background-image: url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
         
         /* Sidebar */
         [data-testid="stSidebar"] { 
@@ -141,6 +146,7 @@ def main():
             justify_content: center;
             margin-bottom: 30px;
             overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
         }
         .hero-overlay {
             position: absolute;
@@ -170,12 +176,29 @@ def main():
         
         /* Cards */
         .job-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-left: 5px solid #FF9F1C;
             margin-bottom: 15px;
+        }
+        
+        /* Content Card (for JD and Form) */
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* Form Styling */
+        [data-testid="stForm"] {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         </style>
     """, unsafe_allow_html=True)
@@ -235,6 +258,7 @@ def main():
                 col_left, col_right = st.columns([1, 1])
                 
                 with col_left:
+                    st.markdown('<div class="content-card">', unsafe_allow_html=True)
                     st.subheader("Job Description")
                     jd_file_path = company_data.get("JD_File_Path")
                     if isinstance(jd_file_path, str) and os.path.exists(jd_file_path):
@@ -242,6 +266,7 @@ def main():
                             st.download_button("📥 Download JD File", f, file_name=os.path.basename(jd_file_path))
                     else:
                         st.warning("JD File not available.")
+                    st.markdown('</div>', unsafe_allow_html=True)
 
                 with col_right:
                     st.subheader("Apply Now")
