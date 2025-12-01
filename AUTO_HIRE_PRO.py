@@ -23,6 +23,7 @@ def load_data():
             df["Role"] = "Open Role"
         if "JD_File_Path" not in df.columns:
             df["JD_File_Path"] = None
+        df = df.where(pd.notnull(df), None)
         return df
     else:
         df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
@@ -132,7 +133,7 @@ def main():
                         st.subheader(f"📄 {company_data['Role']} at {selected_company}")
                         
                         jd_file_path = company_data.get("JD_File_Path")
-                        if jd_file_path and os.path.exists(jd_file_path):
+                        if isinstance(jd_file_path, str) and os.path.exists(jd_file_path):
                             with open(jd_file_path, "rb") as f:
                                 st.download_button("📥 Download Job Description", f, file_name=os.path.basename(jd_file_path))
                         
