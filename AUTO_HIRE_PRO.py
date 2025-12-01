@@ -56,7 +56,7 @@ def extract_text_from_docx(file):
 
 def calculate_score(resume_text, jd_text):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         prompt = f"""
         You are an expert ATS (Applicant Tracking System).
         Compare the following Resume with the Job Description.
