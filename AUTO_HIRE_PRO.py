@@ -85,7 +85,9 @@ def calculate_score(resume_text, jd_text):
             - Provide a single integer score from 0 to 100.
             - Output ONLY the integer score. Do not output any other text or explanation.
             """
-            response = model.generate_content(prompt)
+            # Set temperature to 0 for deterministic (consistent) scoring
+            generation_config = {"temperature": 0.0}
+            response = model.generate_content(prompt, generation_config=generation_config)
             score = int(''.join(filter(str.isdigit, response.text)))
             return score
         except Exception as e:
