@@ -239,23 +239,33 @@ def main():
                 selected_company = st.selectbox("Select Company / Role", company_list, index=None, placeholder="Choose a company...")
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True) # Spacer
-                # Just a visual button to match the UI feel
-                st.button("Find Jobs", use_container_width=True)
+                find_jobs_btn = st.button("Find Jobs", use_container_width=True)
 
             st.markdown("---")
 
-            if selected_company:
-                company_data = df[df["Company"] == selected_company].iloc[0]
-                
-                # Job Details Card
-                st.markdown(f"""
-                    <div class="job-card">
-                        <h3>{company_data['Role']}</h3>
-                        <p style="color: #666;">at <strong>{selected_company}</strong></p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                col_left, col_right = st.columns([1, 1])
+            # Session State Logic
+            if find_jobs_btn:
+                if selected_company:
+                    st.session_state['viewing_company'] = selected_company
+                else:
+                    st.warning("⚠️ Please select a company first.")
+
+            # Display Job Details if a company is "viewing"
+            if st.session_state.get('viewing_company'):
+                view_company = st.session_state['viewing_company']
+                # Ensure the company still exists in data (in case of deletion)
+                if view_company in df["Company"].values:
+                    company_data = df[df["Company"] == view_company].iloc[0]
+                    
+                    # Job Details Card
+                    st.markdown(f"""
+                        <div class="job-card">
+                            <h3>{company_data['Role']}</h3>
+                            <p style="color: #666;">at <strong>{view_company}</strong></p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col_left, col_right = st.columns([1, 1])
                 
                 with col_left:
                     st.markdown('<div class="content-card">', unsafe_allow_html=True)
@@ -285,7 +295,7 @@ def main():
                                     if not os.path.exists("resumes"):
                                         os.makedirs("resumes")
                                     
-                                    resume_path = os.path.join("resumes", f"{selected_company}_{candidate_email}_{uploaded_resume.name}")
+                                    resume_path = os.path.join("resumes", f"{view_company}_{candidate_email}_{uploaded_resume.name}")
                                     with open(resume_path, "wb") as f:
                                         f.write(uploaded_resume.getbuffer())
                                     
@@ -301,7 +311,7 @@ def main():
                                     
                                     # Save Application
                                     new_app = {
-                                        "Company": selected_company,
+                                        "Company": view_company,
                                         "Role": company_data["Role"],
                                         "Email": candidate_email,
                                         "Score": score,
