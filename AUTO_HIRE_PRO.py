@@ -63,7 +63,7 @@ def calculate_score(resume_text, jd_text):
     for attempt in range(max_retries):
         try:
             # Use Pro model for better reasoning and consistency
-            model = genai.GenerativeModel('gemini-1.5-pro')
+            model = genai.GenerativeModel('gemini-2.0-pro-exp')
             
             prompt = f"""
             You are a strict and deterministic Applicant Tracking System (ATS).
