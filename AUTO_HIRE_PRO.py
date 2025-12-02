@@ -62,10 +62,12 @@ def calculate_score(resume_text, jd_text):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            # Use Pro model for better reasoning and consistency
+            model = genai.GenerativeModel('gemini-1.5-pro')
+            
             prompt = f"""
-            You are an expert and critical ATS (Applicant Tracking System).
-            Your task is to evaluate the Resume against the Job Description (JD) with high scrutiny.
+            You are a strict and deterministic Applicant Tracking System (ATS).
+            Evaluate the Resume against the Job Description (JD) using the following RIGID scoring rubric.
             
             JOB DESCRIPTION:
             {jd_text}
@@ -73,26 +75,40 @@ def calculate_score(resume_text, jd_text):
             RESUME:
             {resume_text}
             
-            EVALUATION CRITERIA:
-            1. **Keywords & Skills**: Does the candidate possess the specific technical skills and tools mentioned in the JD?
-            2. **Experience**: Does the candidate's experience level match the requirements?
-            3. **Relevance**: Is the candidate's background directly relevant to the role?
+            SCORING RUBRIC (Total 100 Points):
+            1. **Keywords & Hard Skills (Max 30 points)**: 
+               - 30 = All mandatory skills present.
+               - 15 = Some key skills missing.
+               - 0 = No relevant skills.
+            2. **Experience & Seniority (Max 40 points)**:
+               - 40 = Exact match or exceeds years/role requirements.
+               - 20 = Slightly less experience but relevant.
+               - 0 = Mismatch in seniority or years.
+            3. **Role Relevance (Max 30 points)**:
+               - 30 = Resume is perfectly tailored to this specific job title.
+               - 15 = Relevant industry but different role.
+               - 0 = Completely irrelevant background.
             
-            SCORING INSTRUCTIONS:
-            - Be critical. Do not give high scores easily.
-            - A perfect match (100) requires all skills, exact experience, and perfect relevance.
-            - Missing key skills should significantly reduce the score.
-            - Provide a single integer score from 0 to 100.
-            - Output ONLY the integer score. Do not output any other text or explanation.
+            INSTRUCTIONS:
+            - Analyze each section and assign points.
+            - SUM the points to get the final score.
+            - Your output must be ONLY the final integer score (0-100).
+            - Do not provide ranges. Do not provide explanations.
             """
-            # Set temperature to 0 for deterministic (consistent) scoring
-            generation_config = {"temperature": 0.0}
+            
+            # Strict generation config for maximum determinism
+            generation_config = {
+                "temperature": 0.0,
+                "top_p": 0.0,
+                "top_k": 1,
+            }
+            
             response = model.generate_content(prompt, generation_config=generation_config)
             score = int(''.join(filter(str.isdigit, response.text)))
             return score
         except Exception as e:
             if "429" in str(e) and attempt < max_retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                time.sleep(2 ** attempt)
                 continue
             elif attempt == max_retries - 1:
                 st.error(f"AI Error: {e}")
