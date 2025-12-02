@@ -10,7 +10,7 @@ import time
 
 # ---------------- Config ----------------
 CSV_FILE = "companies.csv"
-APPS_FILE = "applications.csv"
+APPS_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\applications.csv.xlsx"
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except FileNotFoundError:
@@ -39,12 +39,12 @@ def save_data(df):
 
 def load_apps():
     if os.path.exists(APPS_FILE):
-        return pd.read_csv(APPS_FILE)
+        return pd.read_excel(APPS_FILE)
     else:
         return pd.DataFrame(columns=["Company", "Role", "Email", "Score", "Resume_Path", "Timestamp"])
 
 def save_apps(df):
-    df.to_csv(APPS_FILE, index=False)
+    df.to_excel(APPS_FILE, index=False)
 
 def extract_text_from_pdf(file):
     reader = PdfReader(file)
@@ -59,36 +59,42 @@ def extract_text_from_docx(file):
     return text
 
 def calculate_score(resume_text, jd_text):
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"""
-        You are an expert and critical ATS (Applicant Tracking System).
-        Your task is to evaluate the Resume against the Job Description (JD) with high scrutiny.
-        
-        JOB DESCRIPTION:
-        {jd_text}
-        
-        RESUME:
-        {resume_text}
-        
-        EVALUATION CRITERIA:
-        1. **Keywords & Skills**: Does the candidate possess the specific technical skills and tools mentioned in the JD?
-        2. **Experience**: Does the candidate's experience level match the requirements?
-        3. **Relevance**: Is the candidate's background directly relevant to the role?
-        
-        SCORING INSTRUCTIONS:
-        - Be critical. Do not give high scores easily.
-        - A perfect match (100) requires all skills, exact experience, and perfect relevance.
-        - Missing key skills should significantly reduce the score.
-        - Provide a single integer score from 0 to 100.
-        - Output ONLY the integer score. Do not output any other text or explanation.
-        """
-        response = model.generate_content(prompt)
-        score = int(''.join(filter(str.isdigit, response.text)))
-        return score
-    except Exception as e:
-        st.error(f"AI Error: {e}")
-        return 0
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            model = genai.GenerativeModel('gemini-2.0-flash')
+            prompt = f"""
+            You are an expert and critical ATS (Applicant Tracking System).
+            Your task is to evaluate the Resume against the Job Description (JD) with high scrutiny.
+            
+            JOB DESCRIPTION:
+            {jd_text}
+            
+            RESUME:
+            {resume_text}
+            
+            EVALUATION CRITERIA:
+            1. **Keywords & Skills**: Does the candidate possess the specific technical skills and tools mentioned in the JD?
+            2. **Experience**: Does the candidate's experience level match the requirements?
+            3. **Relevance**: Is the candidate's background directly relevant to the role?
+            
+            SCORING INSTRUCTIONS:
+            - Be critical. Do not give high scores easily.
+            - A perfect match (100) requires all skills, exact experience, and perfect relevance.
+            - Missing key skills should significantly reduce the score.
+            - Provide a single integer score from 0 to 100.
+            - Output ONLY the integer score. Do not output any other text or explanation.
+            """
+            response = model.generate_content(prompt)
+            score = int(''.join(filter(str.isdigit, response.text)))
+            return score
+        except Exception as e:
+            if "429" in str(e) and attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                continue
+            elif attempt == max_retries - 1:
+                st.error(f"AI Error: {e}")
+                return 0
 
 # ---------------- Streamlit UI ----------------
 def main():
