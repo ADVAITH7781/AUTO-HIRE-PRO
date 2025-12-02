@@ -191,6 +191,7 @@ def main():
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            border-top: 5px solid #FF9F1C;
         }
         
         /* Form Styling */
@@ -199,6 +200,7 @@ def main():
             padding: 25px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-top: 5px solid #FF9F1C;
         }
         </style>
     """, unsafe_allow_html=True)
