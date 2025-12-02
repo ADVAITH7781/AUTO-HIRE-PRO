@@ -236,7 +236,7 @@ def main():
             col1, col2 = st.columns([2, 1])
             with col1:
                 company_list = df["Company"].unique().tolist()
-                selected_company = st.selectbox("Select Company / Role", company_list)
+                selected_company = st.selectbox("Select Company / Role", company_list, index=None, placeholder="Choose a company...")
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True) # Spacer
                 # Just a visual button to match the UI feel
