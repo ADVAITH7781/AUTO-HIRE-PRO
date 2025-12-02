@@ -208,23 +208,77 @@ def main():
             margin-bottom: 15px;
         }
         
-        /* Content Card (for JD and Form) */
+        /* Enterprise Button Styling */
+        div.stButton > button {
+            background: linear-gradient(135deg, #FF9F1C 0%, #FF7E00 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 159, 28, 0.3);
+            width: 100%;
+        }
+        div.stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 159, 28, 0.4);
+            background: linear-gradient(135deg, #FFB042 0%, #FF8F00 100%);
+        }
+        div.stButton > button:active {
+            transform: translateY(1px);
+        }
+
+        /* Interactive Content Cards */
         .content-card {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border-top: 5px solid #FF9F1C;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            border-top: 4px solid #FF9F1C;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         }
         
         /* Form Styling */
         [data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border-top: 5px solid #FF9F1C;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-top: 4px solid #FF9F1C;
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-family: 'Poppins', sans-serif;
+            color: #222;
+            font-weight: 700;
+        }
+        p, li, label {
+            font-family: 'Poppins', sans-serif;
+            color: #444;
+            line-height: 1.6;
+        }
+        
+        /* Footer */
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #222;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 1000;
         }
         </style>
     """, unsafe_allow_html=True)
