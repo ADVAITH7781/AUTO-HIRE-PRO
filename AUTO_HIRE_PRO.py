@@ -62,8 +62,8 @@ def calculate_score(resume_text, jd_text):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # Use Flash model for higher rate limits and reliability
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            # Use 1.5 Flash model for maximum stability and free tier quota
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             prompt = f"""
             You are a strict and deterministic Applicant Tracking System (ATS).
