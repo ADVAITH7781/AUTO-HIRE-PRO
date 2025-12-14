@@ -7,7 +7,11 @@ from docx import Document
 import google.generativeai as genai
 from datetime import datetime
 import time
-
+import smtplib
+import ssl
+from email.mime.media import MIMEMultipart # Actually not needed but good for reference, mainly text/multipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 # ---------------- Config ----------------
 COMPANIES_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\companies.xlsx"
 APPS_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\applications.csv.xlsx"
@@ -49,6 +53,74 @@ def load_apps():
 
 def save_apps(df):
     df.to_excel(APPS_FILE, index=False)
+
+# ---------------- Email Notification ----------------
+def send_email(candidate_email, score, company, role, email_type="success"):
+    try:
+        sender_email = st.secrets["EMAIL_ADDRESS"]
+        password = st.secrets["EMAIL_PASSWORD"]
+    except Exception:
+        print("⚠️ Email credentials not found in secrets. Email skipped.")
+        return
+
+    if email_type == "success":
+        subject = f"Congratulations! You've been shortlisted for {role} at {company}"
+        heading = "Great News! 🎉"
+        heading_color = "#FF9F1C"
+        score_color = "#2ecc71"
+        body_content = f"""
+        <p>We are thrilled to inform you that your profile has been <strong>shortlisted</strong> for the <strong>{role}</strong> position at <strong>{company}</strong>!</p>
+        <p>Your Resume Score: <span style="font-size: 18px; font-weight: bold; color: {score_color};">{score}/100</span></p>
+        <hr>
+        <p>As a next step, we invite you to complete a brief Aptitude Test. Please click the link below to proceed:</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://example.com/aptitude-test" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
+        </div>
+        <p style="font-size: 12px; color: #888;">Note: This link is valid for 48 hours.</p>
+        """
+    else:  # rejection
+        subject = f"Update on your application for {role} at {company}"
+        heading = "Application Update"
+        heading_color = "#555"
+        score_color = "#e74c3c"
+        body_content = f"""
+        <p>Thank you for giving us the opportunity to review your application for the <strong>{role}</strong> position at <strong>{company}</strong>.</p>
+        <p>We were impressed by your skills; however, the competition strictly required a higher match score for this round.</p>
+        <p>Your Resume Score: <span style="font-size: 18px; font-weight: bold; color: {score_color};">{score}/100</span></p>
+        <hr>
+        <p><strong>Don't be discouraged!</strong> We will keep your resume in our talent pool for future openings that better match your profile.</p>
+        """
+
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <div style="background-color: #f4f4f4; padding: 20px;">
+                <div style="background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: auto; border-top: 5px solid {heading_color};">
+                    <h2 style="color: {heading_color};">{heading}</h2>
+                    <p>Dear Candidate,</p>
+                    {body_content}
+                    <br>
+                    <p>Best Regards,<br><strong>Auto Hire Pro Team</strong></p>
+                </div>
+            </div>
+        </body>
+    </html>
+    """
+    
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = candidate_email
+    msg.attach(MIMEText(html_content, "html"))
+
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, candidate_email, msg.as_string())
+        print(f"✅ {email_type.capitalize()} email sent to {candidate_email}")
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
 
 def extract_text_from_pdf(file):
     reader = PdfReader(file)
@@ -405,8 +477,21 @@ def main():
                                     apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
                                     save_apps(apps_df)
                                     
-                                    st.success(f"✅ Application Submitted! Your Resume Match Score: **{score}/100**")
-                                    st.balloons()
+                                    # Logic for Emails based on Dynamic Threshold
+                                    try:
+                                        threshold = int(company_data.get("ResumeThreshold", 60))
+                                    except:
+                                        threshold = 60
+
+                                    if score >= threshold:
+                                        send_email(candidate_email, score, view_company, company_data["Role"], email_type="success")
+                                        st.success(f"✅ Application Submitted! 🎉 Resume Score: **{score}/100**")
+                                        st.balloons()
+                                        st.caption("📧 A confirmation email with the Test Link has been sent to your inbox.")
+                                    else:
+                                        send_email(candidate_email, score, view_company, company_data["Role"], email_type="rejection")
+                                        st.warning(f"✅ Application Submitted. Resume Score: **{score}/100**")
+                                        st.caption("📧 An update email has been sent to your inbox.")
 
     # ---------------- ADMIN PANEL ----------------
     elif app_mode == "Admin Panel":
