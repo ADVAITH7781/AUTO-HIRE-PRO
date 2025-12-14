@@ -9,7 +9,7 @@ from datetime import datetime
 import time
 
 # ---------------- Config ----------------
-CSV_FILE = "companies.csv"
+COMPANIES_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\companies.xlsx"
 APPS_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\applications.csv.xlsx"
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -22,20 +22,24 @@ genai.configure(api_key=API_KEY)
 
 # ---------------- Data Handling ----------------
 def load_data():
-    if os.path.exists(CSV_FILE):
-        df = pd.read_csv(CSV_FILE)
-        if "Role" not in df.columns:
-            df["Role"] = "Open Role"
-        if "JD_File_Path" not in df.columns:
-            df["JD_File_Path"] = ""
-        df = df.fillna("")
-        return df
+    if os.path.exists(COMPANIES_FILE):
+        try:
+            df = pd.read_excel(COMPANIES_FILE)
+            # Ensure columns exist
+            required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]
+            for col in required_cols:
+                if col not in df.columns:
+                    df[col] = ""
+            df = df.fillna("")
+            return df
+        except Exception:
+            return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
     else:
         df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
         return df
 
 def save_data(df):
-    df.to_csv(CSV_FILE, index=False)
+    df.to_excel(COMPANIES_FILE, index=False)
 
 def load_apps():
     if os.path.exists(APPS_FILE):
