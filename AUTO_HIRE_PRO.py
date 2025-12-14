@@ -9,7 +9,6 @@ from datetime import datetime
 import time
 import smtplib
 import ssl
-from email.mime.media import MIMEMultipart # Actually not needed but good for reference, mainly text/multipart
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 # ---------------- Config ----------------
