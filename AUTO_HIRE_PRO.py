@@ -59,7 +59,7 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         sender_email = st.secrets["EMAIL_ADDRESS"]
         password = st.secrets["EMAIL_PASSWORD"]
     except Exception:
-        print("⚠️ Email credentials not found in secrets. Email skipped.")
+        st.warning("⚠️ Email secrets not found. Skipping email.")
         return
 
     if email_type == "success":
@@ -119,6 +119,7 @@ def send_email(candidate_email, score, company, role, email_type="success"):
             server.sendmail(sender_email, candidate_email, msg.as_string())
         print(f"✅ {email_type.capitalize()} email sent to {candidate_email}")
     except Exception as e:
+        st.error(f"❌ Email Delivery Failed: {e}")
         print(f"❌ Failed to send email: {e}")
 
 def extract_text_from_pdf(file):
