@@ -29,7 +29,6 @@ def load_data():
     if os.path.exists(COMPANIES_FILE):
         try:
             df = pd.read_excel(COMPANIES_FILE)
-            # Ensure columns exist
             required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]
             for col in required_cols:
                 if col not in df.columns:
@@ -76,19 +75,17 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         <div style="text-align: center; margin: 30px 0;">
             <a href="https://example.com/aptitude-test" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
         </div>
-        <p style="font-size: 12px; color: #888;">Note: This link is valid for 48 hours.</p>
         """
-    else:  # rejection
+    else:
         subject = f"Update on your application for {role} at {company}"
         heading = "Application Update"
         heading_color = "#555"
         score_color = "#e74c3c"
         body_content = f"""
         <p>Thank you for giving us the opportunity to review your application for the <strong>{role}</strong> position at <strong>{company}</strong>.</p>
-        <p>We were impressed by your skills; however, the competition strictly required a higher match score for this round.</p>
         <p>Your Resume Score: <span style="font-size: 18px; font-weight: bold; color: {score_color};">{score}/100</span></p>
         <hr>
-        <p><strong>Don't be discouraged!</strong> We will keep your resume in our talent pool for future openings that better match your profile.</p>
+        <p><strong>Don't be discouraged!</strong> We will keep your resume in our talent pool for future openings.</p>
         """
 
     html_content = f"""
@@ -139,47 +136,18 @@ def calculate_score(resume_text, jd_text):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # Use Flash Latest model (Stable alias for 1.5 Flash)
             model = genai.GenerativeModel('gemini-flash-latest')
-            
             prompt = f"""
-            You are a strict and deterministic Applicant Tracking System (ATS).
-            Evaluate the Resume against the Job Description (JD) using the following RIGID scoring rubric.
-            
-            JOB DESCRIPTION:
-            {jd_text}
-            
-            RESUME:
-            {resume_text}
-            
-            SCORING RUBRIC (Total 100 Points):
-            1. **Keywords & Hard Skills (Max 30 points)**: 
-               - 30 = All mandatory skills present.
-               - 15 = Some key skills missing.
-               - 0 = No relevant skills.
-            2. **Experience & Seniority (Max 40 points)**:
-               - 40 = Exact match or exceeds years/role requirements.
-               - 20 = Slightly less experience but relevant.
-               - 0 = Mismatch in seniority or years.
-            3. **Role Relevance (Max 30 points)**:
-               - 30 = Resume is perfectly tailored to this specific job title.
-               - 15 = Relevant industry but different role.
-               - 0 = Completely irrelevant background.
-            
-            INSTRUCTIONS:
-            - Analyze each section and assign points.
-            - SUM the points to get the final score.
-            - Your output must be ONLY the final integer score (0-100).
-            - Do not provide ranges. Do not provide explanations.
+            You are a strict ATS. Evaluate Resume against JD.
+            JD: {jd_text}
+            RESUME: {resume_text}
+            SCORING (Max 100):
+            1. Skills (30)
+            2. Experience (40)
+            3. Relevance (30)
+            Output ONLY final integer score.
             """
-            
-            # Strict generation config for maximum determinism
-            generation_config = {
-                "temperature": 0.0,
-                "top_p": 0.0,
-                "top_k": 1,
-            }
-            
+            generation_config = {"temperature": 0.0, "top_p": 0.0, "top_k": 1}
             response = model.generate_content(prompt, generation_config=generation_config)
             score = int(''.join(filter(str.isdigit, response.text)))
             return score
@@ -191,504 +159,359 @@ def calculate_score(resume_text, jd_text):
                 st.error(f"AI Error: {e}")
                 return 0
 
-# ---------------- High-End UI Implementation ----------------
+# ---------------- VIBRANT SAAS UI IMPLEMENTATION ----------------
 def main():
-    st.set_page_config(page_title="Auto Hire Pro", page_icon="⚡", layout="wide")
+    st.set_page_config(page_title="Auto Hire Pro", page_icon="🚀", layout="wide")
 
-    # ---------------- GLOBAL CSS INJECTION ----------------
+    # ---------------- CSS: ORANGE & WHITE SAAS THEME ----------------
     st.markdown("""
         <style>
-        /* Import Google Fonts: Outfit (Modern Geometric) */
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         
-        /* -------- ROOT VARIABLES -------- */
         :root {
-            --bg-color: #0F172A;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #8B5CF6; /* Violet */
-            --accent-secondary: #06B6D4; /* Cyan */
-            --text-primary: #F8FAFC;
-            --text-secondary: #94A3B8;
+            --primary: #FF6B00;
+            --primary-hover: #E65A00;
+            --secondary: #FFF7ED; 
+            --text-main: #1E293B;
+            --text-light: #64748B;
+            --bg-page: #FFFFFF;
+            --bg-card: #FFFFFF;
+            --border-color: #E2E8F0;
         }
 
-        /* -------- GLOBAL RESETS -------- */
         html, body, [class*="css"] {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-page);
         }
 
-        /* -------- BACKGROUND ANIMATION -------- */
-        .stApp {
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
-                url('https://images.unsplash.com/photo-1620641788421-7f1c3374c752?q=80&w=2070&auto=format&fit=crop'); 
-            /* Abstract Dark Grainy Background */
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-size: cover;
-        }
-
-        /* -------- SIDEBAR -------- */
+        /* Sidebar Styling */
         [data-testid="stSidebar"] {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid var(--glass-border);
-        }
-        [data-testid="stSidebar"] .block-container {
-            padding-top: 2rem;
-        }
-
-        /* -------- GLASSMORPHISM CARDS -------- */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-            margin-bottom: 25px;
-        }
-
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 45px rgba(139, 92, 246, 0.2);
-            border-color: rgba(139, 92, 246, 0.5);
-        }
-
-        /* -------- TYPOGRAPHY -------- */
-        h1, h2, h3 {
-            color: var(--text-primary);
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            background: linear-gradient(to right, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            background-color: #FAFAFA;
+            border-right: 1px solid var(--border-color);
         }
         
-        .highlight {
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-        }
-
-        p, li, label {
-            color: var(--text-secondary);
-            font-weight: 300;
-        }
-
-        /* -------- BUTTONS (CUSTOM GRADIENT) -------- */
-        div.stButton > button {
-            background: linear-gradient(135deg, var(--accent-primary) 0%, #6366F1 100%);
-            color: white;
-            border: none;
-            padding: 12px 32px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
-            letter-spacing: 0.5px;
-            width: 100%;
+        /* Typography */
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            color: #0F172A;
+            letter-spacing: -0.025em;
         }
         
-        div.stButton > button:hover {
-            transform: scale(1.02) translateY(-2px);
-            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.6);
-            background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
-        }
-
-        div.stButton > button:active {
-            transform: scale(0.98);
-        }
-
-        /* -------- INPUTS -------- */
-        [data-testid="stTextInput"], [data-testid="stSelectbox"] {
-            border-radius: 12px !important;
-        }
-        
-        div.stTextInput > div > div > input {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: white;
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 12px;
-        }
-
-        div.stTextInput > div > div > input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
-            color: white;
-        }
-
-        /* -------- ANIMATIONS -------- */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translate3d(0, 40px, 0);
-            }
-            to {
-                opacity: 1;
-                transform: translate3d(0, 0, 0);
-            }
-        }
-
-        .animate-enter {
-            animation-name: fadeInUp;
-            animation-duration: 0.8s;
-            animation-fill-mode: both;
-        }
-
-        .delay-1 { animation-delay: 0.2s; }
-        .delay-2 { animation-delay: 0.4s; }
-        .delay-3 { animation-delay: 0.6s; }
-        
-        /* -------- HERO SECTION -------- */
-        .hero {
-            position: relative;
-            padding: 80px 40px;
-            border-radius: 24px;
-            overflow: hidden;
-            background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.2), transparent 50%),
-                        linear-gradient(to bottom right, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 40px;
-            text-align: center;
-        }
-        
-        .hero h1 {
-            font-size: 4rem;
-            margin-bottom: 20px;
+        .hero-title {
+            font-size: 3.5rem;
             line-height: 1.1;
-            text-shadow: 0 4px 30px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #0F172A, #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
-        .hero p {
-            font-size: 1.4rem;
-            max-width: 600px;
-            margin: 0 auto;
-            color: #cbd5e1;
-        }
-        
-        /* -------- TABS STYLING -------- */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 24px;
-            background-color: transparent;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            white-space: pre-wrap;
-            background-color: transparent;
-            border-radius: 8px;
-            color: #94A3B8;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: rgba(139, 92, 246, 0.1);
-            color: #F8FAFC;
+        .highlight-orange {
+            color: var(--primary);
+            -webkit-text-fill-color: var(--primary);
         }
 
+        /* Buttons (SaaS Style) */
+        div.stButton > button {
+            background-color: var(--primary) !important;
+            color: white !important;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(255, 107, 0, 0.3);
+            transition: all 0.2s ease;
+        }
+        div.stButton > button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(255, 107, 0, 0.4);
+            background-color: var(--primary-hover) !important;
+        }
+
+        /* Cards */
+        .saas-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .saas-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #CBD5E1;
+            transform: translateY(-2px);
+        }
+
+        /* Inputs */
+        .stTextInput input, .stSelectbox [data-baseweb="select"] {
+            border-radius: 8px;
+            border: 1px solid #CBD5E1;
+        }
+        .stTextInput input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+        }
+
+        /* Stats Badge */
+        .stat-badge {
+            display: inline-block;
+            background-color: var(--secondary);
+            color: var(--primary);
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* Steps */
+        .step-num {
+            width: 40px; 
+            height: 40px; 
+            background: var(--secondary); 
+            color: var(--primary); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 50%;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
         </style>
     """, unsafe_allow_html=True)
 
     # ---------------- SIDEBAR ----------------
     with st.sidebar:
-        st.markdown("<h2 style='text-align: center;'>⚡ Auto Hire Pro</h2>", unsafe_allow_html=True)
-        st.write("") # Spacer
-        
-        app_mode = st.radio("Navigation", ["Candidate Experience", "Admin Commander"], label_visibility="collapsed")
-        
-        st.markdown("---")
-        st.markdown("""
-            <div style='background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;'>
-                <p style='margin:0; font-size: 12px; color: #64748B;'>SYSTEM STATUS</p>
-                <p style='margin:0; color: #10B981; font-weight: 600;'>● Online</p>
-                <p style='margin:5px 0 0 0; font-size: 12px; color: #64748B;'>POWERED BY</p>
-                <p style='margin:0; color: #F8FAFC; font-weight: 600;'>Gemini 1.5 Flash</p>
+        st.markdown(f"""
+            <div style="padding: 1rem 0;">
+                <h2 style="color: var(--primary); margin:0;">Auto Hire<span style="color:#0F172A">Pro</span></h2>
+                <p style="color: var(--text-light); font-size: 0.875rem;">Intelligent Hiring Platform</p>
             </div>
         """, unsafe_allow_html=True)
+        
+        mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
+        
+        st.markdown("---")
+        st.markdown("### Trusted by")
+        st.image("https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3", caption="Market Leaders")
 
     df = load_data()
     apps_df = load_apps()
 
-    # ---------------- CANDIDATE LAYOUT ----------------
-    if app_mode == "Candidate Experience":
+    # ---------------- CANDIDATE VIEW ----------------
+    if mode == "Job Seekers":
         # Hero Section
-        st.markdown("""
-            <div class="hero animate-enter">
-                <h1>Unlock Your <br><span class="highlight">Future Career</span></h1>
-                <p>Advanced AI-powered matching ensures your resume gets the attention it deserves.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        if df.empty:
-            st.info("No active positions detected in the neural network.")
-        else:
-            # Layout: Search on Top
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                company_options = df["Company"].unique().tolist()
-                selected_company = st.selectbox("Search Companies", company_options, index=None, placeholder="Select a target organization...")
-            with col2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                find_btn = st.button("Initialize Search", use_container_width=True)
-
-            if find_btn:
-                if selected_company:
-                    st.session_state['viewing_company'] = selected_company
-                else:
-                    st.toast("⚠️ Select a company to proceed.", icon="⚠️")
-
-            # Main Job View
-            if st.session_state.get('viewing_company') and st.session_state['viewing_company'] in df["Company"].values:
-                view_company = st.session_state['viewing_company']
-                company_data = df[df["Company"] == view_company].iloc[0]
-
-                st.markdown("---")
+        col1, col2 = st.columns([1.2, 1])
+        with col1:
+            st.markdown('<div class="stat-badge">✨ #1 AI Hiring Tool</div>', unsafe_allow_html=True)
+            st.markdown("""
+                <h1 class="hero-title">Your Dream Job, <span class="highlight-orange">Found Faster.</span></h1>
+                <p style="font-size: 1.2rem; color: #475569; margin-bottom: 2rem; line-height: 1.6;">
+                    Stop sending resumes into the void. tailored AI analysis matches your profile to the perfect role instantly.
+                </p>
+            """, unsafe_allow_html=True)
+            
+            # Search Bar Embedded in Hero
+            with st.container():
+                st.markdown('<div style="background:var(--secondary); padding: 1.5rem; border-radius: 12px;">', unsafe_allow_html=True)
+                c_search, c_btn = st.columns([3, 1])
+                with c_search:
+                    options = df["Company"].unique().tolist() if not df.empty else []
+                    selected = st.selectbox("Find your company...", options, index=None, label_visibility="collapsed", placeholder="Select Company or Role")
+                with c_btn:
+                    go = st.button("Search Jobs", use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
                 
-                # Dynamic Grid Layout
-                grid_c1, grid_c2 = st.columns([1, 1.5])
+                if go and selected:
+                    st.session_state['view_co'] = selected
+        
+        with col2:
+            st.image("https://plus.unsplash.com/premium_photo-1661284854813-08e375e2f759?q=80&w=2069&auto=format&fit=crop", use_container_width=True, style="border-radius: 20px;")
 
-                with grid_c1:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+
+        # "How it Works" Section
+        st.markdown("<h3 style='text-align:center;'>How AutoHire Pro Works</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:#64748B; margin-bottom:3rem;'>Simplicity meets Intelligence.</p>", unsafe_allow_html=True)
+        
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">1</div>
+                    <h4>Upload Profile</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Drag & drop your resume (PDF/DOCX). Our system parses it instantly.</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with s2:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">2</div>
+                    <h4>AI Analysis</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Gemini AI compares your skills against the Job Description in real-text.</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with s3:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">3</div>
+                    <h4>Instant Feedback</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Get a match score and next steps delivered straight to your inbox.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+        # Job Application Section (If Selected)
+        if st.session_state.get('view_co') and not df.empty:
+            target = st.session_state['view_co']
+            if target in df["Company"].values:
+                data = df[df["Company"] == target].iloc[0]
+                
+                st.markdown("<hr style='margin: 4rem 0;'>", unsafe_allow_html=True)
+                st.markdown(f"## Apply to <span class='highlight-orange'>{target}</span>", unsafe_allow_html=True)
+                
+                job_col, form_col = st.columns([1, 1.5])
+                
+                with job_col:
                     st.markdown(f"""
-                        <div class="glass-card animate-enter delay-1">
-                            <p style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-secondary);'>Company Profile</p>
-                            <h2 style='margin: 5px 0 15px 0;'>{view_company}</h2>
-                            <h3 style='font-weight: 400; color: white;'>{company_data['Role']}</h3>
-                            <div style='margin-top: 20px; display: flex; gap: 10px;'>
-                                <span style='background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; font-size: 12px;'>Full Time</span>
-                                <span style='background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; font-size: 12px;'>Remote Friendly</span>
+                        <div class="saas-card" style="background: #FAFAFA;">
+                            <h3 style="color:var(--primary);">{data['Role']}</h3>
+                            <p><strong>Location:</strong> Remote / Hybrid</p>
+                            <p><strong>Type:</strong> Full Time</p>
+                            <div style="margin-top: 20px;">
+                                <p style="font-size:0.9rem;">{data['JD'][:200]}...</p>
                             </div>
-                        </div>
                     """, unsafe_allow_html=True)
                     
-                    # JD Download Button
-                    st.markdown('<div class="glass-card animate-enter delay-2">', unsafe_allow_html=True)
-                    st.markdown("### Job Asset Info")
-                    jd_file = company_data.get("JD_File_Path")
-                    if isinstance(jd_file, str) and os.path.exists(jd_file):
-                        with open(jd_file, "rb") as f:
-                            st.download_button("⬇️ Download Job Spec", f, file_name=os.path.basename(jd_file), mime="application/octet-stream", use_container_width=True)
-                    else:
-                        st.write("No downloadable assets.")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    path = data.get("JD_File_Path")
+                    if isinstance(path, str) and os.path.exists(path):
+                        with open(path, "rb") as f:
+                            st.download_button("Download Full Spec", f, file_name=os.path.basename(path), use_container_width=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
 
-                with grid_c2:
-                    st.markdown('<div class="glass-card animate-enter delay-1">', unsafe_allow_html=True)
-                    st.markdown("### 🚀 Submit Application")
-                    st.write("Our AI agents will analyze your profile instantly.")
-                    
-                    with st.form("application_form_modern"):
-                        email_input = st.text_input("Applicant Email", placeholder="you@domain.com")
-                        resume_file = st.file_uploader("Upload Resume (PDF/DOCX Only)", type=["pdf", "docx"])
+                with form_col:
+                    st.markdown('<div class="saas-card">', unsafe_allow_html=True)
+                    st.subheader("Candidate Details")
+                    with st.form("apply_form"):
+                        email = st.text_input("Work Email")
+                        resume = st.file_uploader("Resume Document", type=["pdf", "docx"])
                         
                         st.markdown("<br>", unsafe_allow_html=True)
-                        submitted = st.form_submit_button("Start Analysis Sequence")
-                        
-                        if submitted:
-                            if not email_input or not resume_file:
-                                st.error("❌ Protocols Incomplete: Email and Resume required.")
+                        if st.form_submit_button("Submit Application"):
+                            if not email or not resume:
+                                st.error("Please fill in all fields.")
                             else:
-                                with st.status("Initializing Neural Analysis...", expanded=True) as status:
-                                    st.write("📂 Securely uploading resume...")
+                                with st.spinner("Processing..."):
                                     if not os.path.exists("resumes"): os.makedirs("resumes")
-                                    resume_path = os.path.join("resumes", f"{view_company}_{email_input}_{resume_file.name}")
-                                    with open(resume_path, "wb") as f: f.write(resume_file.getbuffer())
-                                    time.sleep(0.5)
-
-                                    st.write("🔍 Extracting skills and experience...")
-                                    resume_text = ""
-                                    if resume_file.name.endswith(".pdf"):
-                                        resume_text = extract_text_from_pdf(resume_file)
+                                    r_path = os.path.join("resumes", f"{target}_{email}_{resume.name}")
+                                    with open(r_path, "wb") as f: f.write(resume.getbuffer())
+                                    
+                                    text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
+                                    score = calculate_score(text, data["JD"])
+                                    
+                                    new_app = {"Company": target, "Role": data["Role"], "Email": email, "Score": score, "Resume_Path": r_path, "Timestamp": datetime.now()}
+                                    apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
+                                    save_apps(apps_df)
+                                    
+                                    thresh = int(data.get("ResumeThreshold", 60))
+                                    email_type = "success" if score >= thresh else "rejection"
+                                    send_email(email, score, target, data["Role"], email_type)
+                                    
+                                    if score >= thresh:
+                                        st.success(f"Application Sent! Score: {score}")
+                                        st.balloons()
                                     else:
-                                        resume_text = extract_text_from_docx(resume_file)
-                                    
-                                    st.write("🧠 AI evaluating against Job Description...")
-                                    score = calculate_score(resume_text, company_data["JD"])
-                                    
-                                    status.update(label="Analysis Complete", state="complete", expanded=False)
-                                
-                                # Process Result (Same Logic)
-                                new_app = {
-                                    "Company": view_company,
-                                    "Role": company_data["Role"],
-                                    "Email": email_input,
-                                    "Score": score,
-                                    "Resume_Path": resume_path,
-                                    "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                }
-                                apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
-                                save_apps(apps_df)
-                                
-                                try:
-                                    threshold = int(company_data.get("ResumeThreshold", 60))
-                                except:
-                                    threshold = 60
-
-                                if score >= threshold:
-                                    send_email(email_input, score, view_company, company_data["Role"], email_type="success")
-                                    st.balloons()
-                                    st.markdown(f"""
-                                        <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 20px; border-radius: 12px; text-align: center; margin-top: 20px;">
-                                            <h2 style="color: #2ecc71; margin:0;">MATCH SUCCESS: {score}/100</h2>
-                                            <p style="color: white;">You have passed the preliminary screening.</p>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                                else:
-                                    send_email(email_input, score, view_company, company_data["Role"], email_type="rejection")
-                                    st.markdown(f"""
-                                        <div style="background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; padding: 20px; border-radius: 12px; text-align: center; margin-top: 20px;">
-                                            <h2 style="color: #e74c3c; margin:0;">MATCH SCORE: {score}/100</h2>
-                                            <p style="color: white;">Profile stored for future matching.</p>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-
+                                        st.info(f"Application Sent. Score: {score}")
                     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ---------------- ADMIN LAYOUT ----------------
-    elif app_mode == "Admin Commander":
-        if 'admin_logged_in' not in st.session_state:
-            st.session_state.admin_logged_in = False
+    # ---------------- ADMIN DASHBOARD ----------------
+    elif mode == "Admin Dashboard":
+        st.title(f"Dashboard <span style='font-weight:300; color:#94A3B8;'>Overview</span>", anchor=False)
+        st.markdown(f"<p style='color:#64748B;'>Welcome back, Admin. System is running optimally.</p>", unsafe_allow_html=True)
 
-        if not st.session_state.admin_logged_in:
-            col1, col2, col3 = st.columns([1,2,1])
-            with col2:
-                st.markdown('<div class="glass-card animate-enter">', unsafe_allow_html=True)
-                st.subheader("🔐 Restricted Access")
-                with st.form("login_form"):
-                    username = st.text_input("Identity")
-                    password = st.text_input("Passcode", type="password")
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.form_submit_button("Authenticate"):
-                        if username == "admin" and password == "admin123":
-                            st.session_state.admin_logged_in = True
+        if 'auth' not in st.session_state: st.session_state.auth = False
+
+        if not st.session_state.auth:
+            c1, c2, c3 = st.columns([1,1,1])
+            with c2:
+                with st.form("login"):
+                    st.subheader("Admin Login")
+                    u = st.text_input("Username")
+                    p = st.text_input("Password", type="password")
+                    if st.form_submit_button("Login"):
+                        if u == "admin" and p == "admin123":
+                            st.session_state.auth = True
                             st.rerun()
                         else:
-                            st.error("⛔ Access Denied")
-                st.markdown('</div>', unsafe_allow_html=True)
+                            st.error("Bad credentials")
         else:
-            # Admin Dashboard
-            st.title("Admin Command Center")
-            
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown(f"""
-                    <div class="glass-card">
-                        <h4 style="margin:0; color: var(--text-secondary);">Total Applications</h4>
-                        <h1 style="margin:0; font-size: 3rem; color: var(--accent-primary);">{len(apps_df)}</h1>
-                    </div>
-                """, unsafe_allow_html=True)
-            with c2:
-                avg_score = int(apps_df["Score"].mean()) if not apps_df.empty else 0
-                st.markdown(f"""
-                    <div class="glass-card">
-                        <h4 style="margin:0; color: var(--text-secondary);">Avg. Quality Score</h4>
-                        <h1 style="margin:0; font-size: 3rem; color: var(--accent-secondary);">{avg_score}</h1>
-                    </div>
-                """, unsafe_allow_html=True)
-            with c3:
-                cols = st.columns([1,1])
-                with cols[1]:
-                    if st.button("Logout"):
-                        st.session_state.admin_logged_in = False
-                        st.rerun()
+            # KPIS
+            k1, k2, k3, k4 = st.columns(4)
+            with k1:
+                st.metric("Total Candidates", len(apps_df))
+            with k2:
+                avg = int(apps_df["Score"].mean()) if not apps_df.empty else 0
+                st.metric("Avg Quality Score", f"{avg}%")
+            with k3:
+                active_jobs = len(df)
+                st.metric("Active Roles", active_jobs)
+            with k4:
+                if st.button("Logout"):
+                    st.session_state.auth = False
+                    st.rerun()
 
-            tab1, tab2 = st.tabs(["📋 Application Feed", "⚙️ Company Matrix"])
-
-            with tab1:
-                if apps_df.empty:
-                    st.info("No incoming data streams.")
-                else:
-                    st.dataframe(
-                        apps_df.sort_values(by="Score", ascending=False),
-                        use_container_width=True,
-                        column_config={
-                            "Score": st.column_config.ProgressColumn(
-                                "Match Score",
-                                help="AI Calculated Match",
-                                format="%d",
-                                min_value=0,
-                                max_value=100,
-                            ),
-                        }
-                    )
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            with tab2:
-                st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-                action = st.radio("Operation Mode", ["Add Entity", "Modify Entity", "Delete Entity"], horizontal=True)
-                
-                if action == "Add Entity":
-                    with st.form("add_company"):
-                        c_a, c_b = st.columns(2)
-                        with c_a:
-                            company = st.text_input("Company Name")
-                            role = st.text_input("Role Title")
-                        with c_b:
-                            uploaded_file = st.file_uploader("Upload JD Spec")
+            tab_jobs, tab_apps = st.tabs(["Manage Jobs", "View Applications"])
+            
+            with tab_jobs:
+                with st.expander("➕ Create New Job Opening", expanded=False):
+                    with st.form("new_job"):
+                        jc1, jc2 = st.columns(2)
+                        with jc1:
+                            co_name = st.text_input("Company Name")
+                            role_name = st.text_input("Role Title")
+                        with jc2:
+                            jd_file = st.file_uploader("Upload JD Spec")
                         
-                        st.divider()
-                        c_c, c_d = st.columns(2)
-                        with c_c:
-                            resume_threshold = st.slider("Min Resume Score", 0, 100, 60)
-                        with c_d:
-                            aptitude_threshold = st.slider("Min Aptitude Score", 0, 40, 25)
+                        sliders = st.columns(2)
+                        with sliders[0]: r_th = st.slider("Resume Pass Score", 0, 100, 60)
+                        with sliders[1]: a_th = st.slider("Aptitude Pass Score", 0, 100, 25)
                         
-                        if st.form_submit_button("Deploy New Entity"):
-                            if not company or not uploaded_file:
-                                st.error("⚠️ Data incomplete.")
-                            else:
+                        if st.form_submit_button("Publish Job"):
+                            if co_name and jd_file:
                                 if not os.path.exists("job_descriptions"): os.makedirs("job_descriptions")
-                                jd_path = os.path.join("job_descriptions", uploaded_file.name)
-                                with open(jd_path, "wb") as f: f.write(uploaded_file.getbuffer())
-                                jd_text = extract_text_from_pdf(uploaded_file) if uploaded_file.name.endswith(".pdf") else extract_text_from_docx(uploaded_file)
-                                new_data = {"Company": company, "Role": role, "JD": jd_text, "JD_File_Path": jd_path, "ResumeThreshold": resume_threshold, "AptitudeThreshold": aptitude_threshold}
-                                df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+                                jp = os.path.join("job_descriptions", jd_file.name)
+                                with open(jp, "wb") as f: f.write(jd_file.getbuffer())
+                                jtxt = extract_text_from_pdf(jd_file) if jd_file.name.endswith(".pdf") else extract_text_from_docx(jd_file)
+                                
+                                new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th}
+                                df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                                 save_data(df)
-                                st.success("✅ Entity Active")
-                                time.sleep(1)
+                                st.success("Job Published")
                                 st.rerun()
 
-                elif action == "Modify Entity":
-                    if df.empty:
-                        st.warning("No entities to modify.")
-                    else:
-                        company_to_edit = st.selectbox("Select Target", df["Company"].unique())
-                        curr = df[df["Company"] == company_to_edit].iloc[0]
-                        with st.form("edit_form"):
-                            new_role = st.text_input("Role Title", value=curr["Role"])
-                            new_file = st.file_uploader("Override JD Spec (Optional)")
-                            if st.form_submit_button("Update Entity"):
-                                if new_file:
-                                    jd_path = os.path.join("job_descriptions", new_file.name)
-                                    with open(jd_path, "wb") as f: f.write(new_file.getbuffer())
-                                    jd_text = extract_text_from_pdf(new_file) if new_file.name.endswith(".pdf") else extract_text_from_docx(new_file)
-                                    df.loc[df["Company"] == company_to_edit, ["JD", "JD_File_Path"]] = [jd_text, jd_path]
-                                df.loc[df["Company"] == company_to_edit, "Role"] = new_role
-                                save_data(df)
-                                st.success("✅ Entity Updated")
-                                time.sleep(1)
-                                st.rerun()
-
-                elif action == "Delete Entity":
-                    if not df.empty:
-                        to_del = st.selectbox("Select Target to Purge", df["Company"].unique())
-                        if st.button("EXECUTE PURGE", type="primary"):
-                            df = df[df["Company"] != to_del]
+                st.markdown("### Active Listings")
+                if not df.empty:
+                    st.dataframe(df, use_container_width=True)
+                    
+                    del_co = st.selectbox("Delete Listing", df["Company"].unique(), index=None)
+                    if del_co:
+                        if st.button("Confirm Delete"):
+                            df = df[df["Company"] != del_co]
                             save_data(df)
-                            st.success("✅ Entity Purged")
-                            time.sleep(1)
+                            st.success("Deleted")
                             st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+
+            with tab_apps:
+                st.subheader("Incoming Applications")
+                if not apps_df.empty:
+                    st.dataframe(apps_df.sort_values(by="Score", ascending=False), use_container_width=True)
+                else:
+                    st.info("No data yet.")
 
 if __name__ == "__main__":
     main()
