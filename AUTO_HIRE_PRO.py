@@ -489,19 +489,20 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-        if st.query_params.get("mode") == "test":
-            mode = "Take Aptitude Test"
-            st.sidebar.empty() # Hide Sidebar in Test Mode
-        else:
-            with st.sidebar:
-                st.markdown(f"""
-                    <div style="padding: 1rem 0;">
-                        <h2 style="color: var(--primary); margin:0;">Auto Hire<span style="color:#0F172A">Pro</span></h2>
-                        <p style="color: var(--text-light); font-size: 0.875rem;">Intelligent Hiring Platform</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
+    # ---------------- SIDEBAR ----------------
+    if st.query_params.get("mode") == "test":
+        mode = "Take Aptitude Test"
+        st.sidebar.empty() # Hide Sidebar in Test Mode
+    else:
+        with st.sidebar:
+            st.markdown(f"""
+                <div style="padding: 1rem 0;">
+                    <h2 style="color: var(--primary); margin:0;">Auto Hire<span style="color:#0F172A">Pro</span></h2>
+                    <p style="color: var(--text-light); font-size: 0.875rem;">Intelligent Hiring Platform</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard", "Take Aptitude Test"], label_visibility="collapsed")
 
     df = load_data()
     apps_df = load_apps()
