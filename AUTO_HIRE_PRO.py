@@ -295,9 +295,7 @@ def main():
         
         mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
         
-        st.markdown("---")
-        st.markdown("### Trusted by")
-        st.image("https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3", caption="Market Leaders")
+
 
     df = load_data()
     apps_df = load_apps()
