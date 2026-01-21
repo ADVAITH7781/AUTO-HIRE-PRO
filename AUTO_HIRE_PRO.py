@@ -335,8 +335,7 @@ def main():
                 if go and selected:
                     st.session_state['view_co'] = selected
         
-        with col2:
-            st.image("https://plus.unsplash.com/premium_photo-1661284854813-08e375e2f759?q=80&w=2069&auto=format&fit=crop", use_container_width=True, style="border-radius: 20px;")
+            st.image("https://plus.unsplash.com/premium_photo-1661284854813-08e375e2f759?q=80&w=2069&auto=format&fit=crop", use_container_width=True)
 
         st.markdown("<br><br>", unsafe_allow_html=True)
 
