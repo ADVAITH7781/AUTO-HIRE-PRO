@@ -1,6 +1,11 @@
 streamlit
 pandas
+openpyxl
 pypdf
 python-docx
 google-generativeai
-openpyxl
+streamlit-webrtc
+mediapipe
+opencv-python-headless
+av
+numpy
