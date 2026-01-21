@@ -34,6 +34,7 @@ except FileNotFoundError:
 genai.configure(api_key=API_KEY)
 
 # ---------------- Data Handling ----------------
+# ---------------- Data Handling ----------------
 def load_data():
     if os.path.exists(COMPANIES_FILE):
         try:
@@ -43,15 +44,23 @@ def load_data():
                 if col not in df.columns:
                     df[col] = ""
             df = df.fillna("")
+            # st.write(f"DEBUG: Loaded data from {COMPANIES_FILE}, Records: {len(df)}") # Uncomment for UI debug
             return df
-        except Exception:
+        except Exception as e:
+            st.error(f"❌ Error loading data: {e}")
+            print(f"❌ Critical Error loading {COMPANIES_FILE}: {e}")
             return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
     else:
+        print(f"ℹ️ File not found: {COMPANIES_FILE}, creating new.")
         df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
         return df
 
 def save_data(df):
-    df.to_excel(COMPANIES_FILE, index=False)
+    try:
+        df.to_excel(COMPANIES_FILE, index=False)
+        print(f"✅ Data saved to {COMPANIES_FILE}")
+    except Exception as e:
+        st.error(f"❌ Detailed Error Saving Data: {e}")
 
 def load_apps():
     if os.path.exists(APPS_FILE):
