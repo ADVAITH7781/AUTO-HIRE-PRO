@@ -13,8 +13,17 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # ---------------- Config ----------------
-COMPANIES_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\companies.xlsx"
-APPS_FILE = r"C:\Users\advai\.gemini\antigravity\scratch\auto_hire_pro\applications.csv.xlsx"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+COMPANIES_FILE = os.path.join(BASE_DIR, "companies.xlsx")
+APPS_FILE = os.path.join(BASE_DIR, "applications.csv.xlsx")
+RESUMES_DIR = os.path.join(BASE_DIR, "resumes")
+JOBS_DIR = os.path.join(BASE_DIR, "job_descriptions")
+
+# Ensure directories exist
+for d in [RESUMES_DIR, JOBS_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d)
+
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except FileNotFoundError:
@@ -305,7 +314,6 @@ def main():
         # Hero Section
         col1, col2 = st.columns([1.2, 1])
         with col1:
-            st.markdown('<div class="stat-badge">✨ #1 AI Hiring Tool</div>', unsafe_allow_html=True)
             st.markdown("""
                 <h1 class="hero-title">Your Dream Job, <span class="highlight-orange">Found Faster.</span></h1>
                 <p style="font-size: 1.2rem; color: #475569; margin-bottom: 2rem; line-height: 1.6;">
@@ -403,8 +411,7 @@ def main():
                                 st.error("Please fill in all fields.")
                             else:
                                 with st.spinner("Processing..."):
-                                    if not os.path.exists("resumes"): os.makedirs("resumes")
-                                    r_path = os.path.join("resumes", f"{target}_{email}_{resume.name}")
+                                    r_path = os.path.join(RESUMES_DIR, f"{target}_{email}_{resume.name}")
                                     with open(r_path, "wb") as f: f.write(resume.getbuffer())
                                     
                                     text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
@@ -427,26 +434,28 @@ def main():
 
     # ---------------- ADMIN DASHBOARD ----------------
     elif mode == "Admin Dashboard":
-        st.title(f"Dashboard <span style='font-weight:300; color:#94A3B8;'>Overview</span>", anchor=False)
-        st.markdown(f"<p style='color:#64748B;'>Welcome back, Admin. System is running optimally.</p>", unsafe_allow_html=True)
-
         if 'auth' not in st.session_state: st.session_state.auth = False
 
         if not st.session_state.auth:
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
+                # Custom styled Login Card
+                st.markdown('<div class="saas-card">', unsafe_allow_html=True)
                 with st.form("login"):
                     st.subheader("Admin Login")
                     u = st.text_input("Username")
                     p = st.text_input("Password", type="password")
+                    st.markdown("<br>", unsafe_allow_html=True)
                     if st.form_submit_button("Login"):
                         if u == "admin" and p == "admin123":
                             st.session_state.auth = True
                             st.rerun()
                         else:
                             st.error("Bad credentials")
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
             # KPIS
+            st.title("Admin Dashboard")
             k1, k2, k3, k4 = st.columns(4)
             with k1:
                 st.metric("Total Candidates", len(apps_df))
@@ -481,8 +490,7 @@ def main():
                         
                         if st.form_submit_button("Publish Job"):
                             if co_name and jd_file:
-                                if not os.path.exists("job_descriptions"): os.makedirs("job_descriptions")
-                                jp = os.path.join("job_descriptions", jd_file.name)
+                                jp = os.path.join(JOBS_DIR, jd_file.name)
                                 with open(jp, "wb") as f: f.write(jd_file.getbuffer())
                                 jtxt = extract_text_from_pdf(jd_file) if jd_file.name.endswith(".pdf") else extract_text_from_docx(jd_file)
                                 
