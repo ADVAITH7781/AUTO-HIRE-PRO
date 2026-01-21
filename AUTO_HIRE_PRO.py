@@ -5,12 +5,17 @@ import os
 from pypdf import PdfReader
 from docx import Document
 import google.generativeai as genai
-from datetime import datetime
+import datetime
 import time
 import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import cv2
+import mediapipe as mp
+import av
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import numpy as np # Needed for head pose math
 
 # ---------------- Config ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +33,71 @@ try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except FileNotFoundError:
     st.error("⚠️ Secrets file not found! Please create .streamlit/secrets.toml")
+
+# ---------------- CV PROCTORING LOGIC ----------------
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+class ProctoringProcessor(VideoTransformerBase):
+    def __init__(self):
+        self.warn_count = 0
+        self.last_warn = 0
+
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = face_mesh.process(img_rgb)
+        
+        h, w, _ = img.shape
+        face_count = 0
+        status_text = "Secure"
+        color = (0, 255, 0)
+        
+        if results.multi_face_landmarks:
+            face_count = len(results.multi_face_landmarks)
+            
+            if face_count > 1:
+                status_text = "MULTIPLE FACES DETECTED!"
+                color = (0, 0, 255)
+            elif face_count == 1:
+                for face_landmarks in results.multi_face_landmarks:
+                    # Head Pose Estimation (Simple Nose vs Ear X-coord check)
+                    nose = face_landmarks.landmark[1]
+                    left_ear = face_landmarks.landmark[234]
+                    right_ear = face_landmarks.landmark[454]
+                    
+                    # Convert to pixel coords
+                    nx, ny = int(nose.x * w), int(nose.y * h)
+                    lx, _ = int(left_ear.x * w), int(left_ear.y * h)
+                    rx, _ = int(right_ear.x * w), int(right_ear.y * h)
+                    
+                    # Check deviation
+                    dist_l = abs(nx - lx)
+                    dist_r = abs(nx - rx)
+                    
+                    ratio = dist_l / (dist_r + 1e-6)
+                    
+                    if ratio < 0.5: # Looking Left
+                        status_text = "LOOKING AWAY (LEFT)"
+                        color = (0, 165, 255)
+                    elif ratio > 2.0: # Looking Right
+                        status_text = "LOOKING AWAY (RIGHT)"
+                        color = (0, 165, 255)
+                        
+                    # Draw Nose
+                    cv2.circle(img, (nx, ny), 5, (255, 0, 0), -1)
+        else:
+            status_text = "NO FACE DETECTED"
+            color = (0, 0, 255)
+            
+        # Draw Status
+        cv2.putText(img, f"Status: {status_text}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        
+        # Border for warning
+        if color != (0, 255, 0):
+             cv2.rectangle(img, (0,0), (w,h), color, 10)
+             
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
     st.stop()
 
 # Configure Gemini
@@ -64,23 +134,34 @@ def save_data(df):
 
 def load_apps():
     if os.path.exists(APPS_FILE):
-        return pd.read_excel(APPS_FILE)
+        try:
+            df = pd.read_excel(APPS_FILE)
+            for col in ["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"]:
+                if col not in df.columns: df[col] = ""
+            return df
+        except Exception:
+            return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"])
     else:
-        return pd.DataFrame(columns=["Company", "Role", "Email", "Score", "Resume_Path", "Timestamp"])
+        return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"])
 
 def save_apps(df):
     df.to_excel(APPS_FILE, index=False)
 
 # ---------------- Email Notification ----------------
 def send_email(candidate_email, score, company, role, email_type="success"):
+    token = ""
     try:
         sender_email = st.secrets["EMAIL_ADDRESS"]
         password = st.secrets["EMAIL_PASSWORD"]
     except Exception:
         st.warning("⚠️ Email secrets not found. Skipping email.")
-        return
+        return ""
 
     if email_type == "success":
+        # Generate Secure Token
+        chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        token = "".join(random.choices(chars, k=6))
+        
         subject = f"Congratulations! You've been shortlisted for {role} at {company}"
         heading = "Great News! 🎉"
         heading_color = "#FF9F1C"
@@ -89,9 +170,15 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         <p>We are thrilled to inform you that your profile has been <strong>shortlisted</strong> for the <strong>{role}</strong> position at <strong>{company}</strong>!</p>
         <p>Your Resume Score: <span style="font-size: 18px; font-weight: bold; color: {score_color};">{score}/100</span></p>
         <hr>
-        <p>As a next step, we invite you to complete a brief Aptitude Test. Please click the link below to proceed:</p>
+        <p>You have been invited to take the <strong>Proctored Aptitude Test</strong>.</p>
+        <div style="background: #fdf2f8; padding: 15px; border-left: 4px solid #db2777; margin: 20px 0;">
+            <p style="margin:0; font-weight:bold; color:#be185d;">Your Access Credentials:</p>
+            <p style="margin:5px 0 0 0;">Test Password: <span style="font-size: 1.25em; background: #fff; padding: 2px 8px; border: 1px solid #ddd; border-radius: 4px;">{token}</span></p>
+            <p style="margin:5px 0 0 0; font-size: 0.85em; color: #666;">⚠️ Valid for 30 Hours only.</p>
+        </div>
+        <p>Please click the link below to proceed:</p>
         <div style="text-align: center; margin: 30px 0;">
-            <a href="https://example.com/aptitude-test" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
+            <a href="http://localhost:8501" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
         </div>
         """
     else:
@@ -134,9 +221,11 @@ def send_email(candidate_email, score, company, role, email_type="success"):
             server.login(sender_email, password)
             server.sendmail(sender_email, candidate_email, msg.as_string())
         print(f"✅ {email_type.capitalize()} email sent to {candidate_email}")
+        return token
     except Exception as e:
         st.error(f"❌ Email Delivery Failed: {e}")
         print(f"❌ Failed to send email: {e}")
+        return ""
 
 def extract_text_from_pdf(file):
     try:
@@ -186,6 +275,67 @@ def calculate_score(resume_text, jd_text):
             elif attempt == max_retries - 1:
                 st.error(f"AI Error: {e}")
                 return 0
+
+import json
+import random
+
+# ---------------- Question Bank Logic ----------------
+QUESTIONS_DIR = os.path.join(BASE_DIR, "questions")
+if not os.path.exists(QUESTIONS_DIR): os.makedirs(QUESTIONS_DIR)
+
+def generate_question_bank(jd_text, job_id):
+    """Generates 100 questions in 4 batches and saves to JSON."""
+    questions = []
+    topics = [
+        "Technical Skills in JD (Hard)",
+        "Problem Solving & Logic (Medium)",
+        "Situational Judgment (Professional)",
+        "Advanced Role-Specific Scenarios"
+    ]
+    
+    model = genai.GenerativeModel('gemini-flash-latest')
+    
+    for topic in topics:
+        try:
+            prompt = f"""
+            Act as a Senior Tech Interviewer. Generate 25 Multiple Choice Questions (MCQs) for this Job Description.
+            
+            JD SUMMARY: {jd_text[:1000]}...
+            
+            FOCUS AREA: {topic}
+            
+            OUTPUT FORMAT (Strict JSON Array):
+            [
+                {{"q": "Question text", "options": ["A", "B", "C", "D"], "answer": "Option Text"}}
+            ]
+            """
+            response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            batch = json.loads(response.text)
+            if isinstance(batch, list):
+                questions.extend(batch)
+            time.sleep(1) # Safety buffer for API
+        except Exception as e:
+            print(f"⚠️ Error generating batch {topic}: {e}")
+            continue
+            
+    # Save to file
+    q_file = os.path.join(QUESTIONS_DIR, f"{job_id}.json")
+    with open(q_file, "w") as f:
+        json.dump(questions, f)
+    return len(questions)
+
+def get_candidate_questions(job_id, num_questions=40):
+    """Loads the question bank and returns a random sample."""
+    q_file = os.path.join(QUESTIONS_DIR, f"{job_id}.json")
+    if not os.path.exists(q_file):
+        return []
+    
+    with open(q_file, "r") as f:
+        bank = json.load(f)
+    
+    if len(bank) < num_questions:
+        return bank # Return all if less than requested
+    return random.sample(bank, num_questions)
 
 # ---------------- VIBRANT SAAS UI IMPLEMENTATION ----------------
 def main():
@@ -321,13 +471,128 @@ def main():
             </div>
         """, unsafe_allow_html=True)
         
-        mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
+        mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard", "Take Aptitude Test"], label_visibility="collapsed")
 
     df = load_data()
     apps_df = load_apps()
+    
+    # ---------------- HELPER: VERIFY TOKEN ----------------
+    def verify_token(email, password):
+        user = apps_df[apps_df['Email'] == email]
+        if user.empty: return False, "Email not found."
+        
+        user = user.iloc[0]
+        if user['Status'] != 'Shortlisted': return False, "You have not been shortlisted yet."
+        
+        stored_pass = str(user['TestPassword']).strip()
+        if stored_pass != password.strip(): return False, "Invalid Password."
+        
+        # Check Expiry (30 Hours)
+        try:
+            token_time = pd.to_datetime(user['TokenTime'])
+            now = pd.Timestamp.now()
+            diff = now - token_time
+            if diff.total_seconds() > 30 * 3600:
+                return False, "Link Expired (Valid for 30hrs only)."
+        except:
+             return False, "Invalid Token Data."
+             
+        return True, user
+
+    # ---------------- TEST PORTAL ----------------
+    if mode == "Take Aptitude Test":
+        st.markdown("<h1 style='text-align: center; color: #FF6B00;'>🔐 Candidate Test Portal</h1>", unsafe_allow_html=True)
+        
+        if 'test_session' not in st.session_state:
+            st.session_state.test_session = None
+            
+        if not st.session_state.test_session:
+            with st.form("test_login"):
+                st.subheader("Secure Login")
+                email = st.text_input("Registered Email")
+                pwd = st.text_input("Test Password (from Email)")
+                
+                if st.form_submit_button("Start Test"):
+                    valid, res = verify_token(email, pwd)
+                    if valid:
+                        st.session_state.test_session = res
+                        st.success("Verified! Loading Test Environmet...")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Access Denied: {res}")
+        else:
+            # APTITUDE TEST INTERFACE
+            user = st.session_state.test_session
+            st.title(f"📝 Aptitude Test: {user['Role']}")
+            
+            # --- JAVASCRIPT PROCTORING ---
+            st.components.v1.html("""
+                <script>
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        window.parent.postMessage({type: 'violation', msg: 'Tab Switch Detected!'}, '*');
+                    }
+                });
+                window.onblur = function() {
+                    window.parent.postMessage({type: 'violation', msg: 'Window Focus Lost!'}, '*');
+                };
+                </script>
+            """, height=0)
+
+            # --- LAYOUT ---
+            col_q, col_cam = st.columns([3, 1])
+            
+            with col_cam:
+                st.markdown("### 📹 Proctoring Active")
+                st.info("Keep your face in the frame. Do not look away.")
+                webrtc_streamer(key="proctor", video_processor_factory=ProctoringProcessor)
+                
+            with col_q:
+                # Load Questions
+                job_id = user['Role'].replace(" ", "_") # Fallback ID logic if job_id missing in older data
+                # Try to fuzzy match job_id from company if possible, or just use what we have
+                # ideally we should have saved job_id in apps_df but for now let's try to fetch
+                questions = get_candidate_questions(f"{user['Company']}_{user['Role']}".replace(" ", "_"))
+                
+                if not questions:
+                    st.warning("No questions generated for this role yet. Please contact Admin.")
+                else:
+                    with st.form("exam_form"):
+                        answers = {}
+                        for i, q in enumerate(questions):
+                            st.markdown(f"**Q{i+1}. {q['q']}**")
+                            # Encode options carefully
+                            opts = q['options']
+                            answers[i] = st.radio(f"Select Answer {i}", opts, key=f"q{i}", label_visibility="collapsed")
+                            st.markdown("---")
+                            
+                        if st.form_submit_button("Submit Test"):
+                            score = 0
+                            for i, q in enumerate(questions):
+                                if answers[i] == q['answer']:
+                                    score += 1
+                            
+                            final_score = (score / len(questions)) * 100
+                            
+                            # Save Results
+                            apps_df.loc[apps_df['Email'] == user['Email'], 'TestStatus'] = 'Completed'
+                            apps_df.loc[apps_df['Email'] == user['Email'], 'TestScore'] = final_score
+                            save_apps(apps_df)
+                            
+                            st.success(f"Test Submitted! Your Score: {final_score:.1f}%")
+                            st.balloons()
+                            time.sleep(3)
+                            
+                            st.session_state.test_session = None
+                            st.rerun()
+
+            if st.button("Logout / Quit"):
+                st.session_state.test_session = None
+                st.rerun()
 
     # ---------------- CANDIDATE VIEW ----------------
-    if mode == "Job Seekers":
+    elif mode == "Job Seekers":
         # Hero Section
         col1, col2 = st.columns([1.2, 1])
         with col1:
@@ -513,17 +778,23 @@ def main():
                                 with open(jp, "wb") as f: f.write(jd_file.getbuffer())
                                 jtxt = extract_text_from_pdf(jd_file) if jd_file.name.endswith(".pdf") else extract_text_from_docx(jd_file)
                                 
-                                new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th}
+                                # Generate Question Bank
+                                job_id = f"{co_name}_{role_name}".replace(" ", "_")
+                                with st.spinner("🤖 AI is reading JD & Generating 100-Question Exam Bank... (This takes ~15s)"):
+                                    cnt = generate_question_bank(jtxt, job_id)
+                                
+                                new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th, "Job_ID": job_id}
                                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                                 save_data(df)
-                                # st.balloons() # Removed as per request
-                                st.markdown("""
+                                
+                                # st.balloons() # Removed
+                                st.markdown(f"""
                                     <style>
-                                        @keyframes slideIn {
-                                            from { opacity: 0; transform: translateY(10px); }
-                                            to { opacity: 1; transform: translateY(0); }
-                                        }
-                                        .success-card {
+                                        @keyframes slideIn {{
+                                            from {{ opacity: 0; transform: translateY(10px); }}
+                                            to {{ opacity: 1; transform: translateY(0); }}
+                                        }}
+                                        .success-card {{
                                             animation: slideIn 0.5s ease-out;
                                             background-color: #F0FDF4;
                                             border: 1px solid #16A34A;
@@ -535,22 +806,22 @@ def main():
                                             justify-content: center;
                                             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                                             margin-top: 20px;
-                                        }
-                                        .success-icon {
+                                        }}
+                                        .success-icon {{
                                             font-size: 2rem;
                                             margin-right: 1rem;
-                                        }
+                                        }}
                                     </style>
                                     <div class="success-card">
                                         <div class="success-icon">✅</div>
                                         <div>
                                             <h3 style="color: #15803d; margin:0; font-size: 1.25rem;">Job Published Successfully</h3>
-                                            <p style="color: #166534; font-size: 1rem; margin-top: 5px; margin-bottom: 0;">Your new role is now live on the network.</p>
+                                            <p style="color: #166534; font-size: 1rem; margin-top: 5px; margin-bottom: 0;">100-Question Exam Bank Generated.</p>
                                         </div>
                                     </div>
                                 """, unsafe_allow_html=True)
-                                # st.success("Job Published") # Redundant with the card
-                                time.sleep(2.5)
+                                # st.success("Job Published")
+                                time.sleep(3)
                                 st.rerun()
 
                 st.markdown("### Active Listings")
@@ -568,9 +839,38 @@ def main():
             with tab_apps:
                 st.subheader("Incoming Applications")
                 if not apps_df.empty:
-                    st.dataframe(apps_df.sort_values(by="Score", ascending=False), use_container_width=True)
+                    # Interactive List
+                    for i, row in apps_df.sort_values(by="Score", ascending=False).iterrows():
+                        with st.container():
+                            c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
+                            with c1:
+                                st.markdown(f"**{row['Name']}**")
+                                st.caption(f"{row['Role']} @ {row['Company']}")
+                            with c2:
+                                color = "green" if row['Score'] >= 70 else "orange" if row['Score'] >= 50 else "red"
+                                st.markdown(f"<span style='color:{color}; font-weight:bold; font-size:1.1em;'>{row['Score']}/100</span>", unsafe_allow_html=True)
+                            with c3:
+                                st.markdown(f"Status: **{row['Status']}**")
+                            with c4:
+                                if row['Status'] != "Shortlisted":
+                                    if st.button(f"Invite & Shortlist", key=f"sl_{i}"):
+                                        token = send_email(row['Email'], row['Score'], row['Company'], row['Role'], "success")
+                                        if token:
+                                            # Update DB
+                                            # We need to find the index in the original dataframe, not the sorted one
+                                            idx = apps_df[apps_df['Email'] == row['Email']].index[0]
+                                            apps_df.at[idx, 'Status'] = 'Shortlisted'
+                                            apps_df.at[idx, 'TestPassword'] = token
+                                            apps_df.at[idx, 'TokenTime'] = pd.Timestamp.now().isoformat()
+                                            save_apps(apps_df)
+                                            st.success(f"Invited {row['Name']}")
+                                            time.sleep(1)
+                                            st.rerun()
+                                else:
+                                    st.success("Invited ✅")
+                            st.divider()
                 else:
-                    st.info("No data yet.")
+                    st.info("No applications received yet.")
 
 if __name__ == "__main__":
     main()
