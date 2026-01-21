@@ -11,11 +11,26 @@ import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import cv2
-import mediapipe as mp
-import av
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import numpy as np # Needed for head pose math
+
+# ---------------- SAFE IMPORTS FOR CV ----------------
+try:
+    import cv2
+    import mediapipe as mp
+    import av
+    from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+    import numpy as np
+    PROCTORING_AVAILABLE = True
+except ImportError as e:
+    PROCTORING_AVAILABLE = False
+    print(f"⚠️ CV Import Error: {e}")
+    # Define a dummy class to prevent NameError later
+    class VideoTransformerBase: pass
+    webrtc_streamer = None
+except Exception as e:
+    PROCTORING_AVAILABLE = False
+    print(f"⚠️ Unexpected CV Error: {e}")
+    class VideoTransformerBase: pass
+    webrtc_streamer = None
 
 # ---------------- Config ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,14 +50,13 @@ except FileNotFoundError:
     st.error("⚠️ Secrets file not found! Please create .streamlit/secrets.toml")
 
 # ---------------- CV PROCTORING LOGIC ----------------
-# ---------------- CV PROCTORING LOGIC ----------------
-try:
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-    PROCTORING_AVAILABLE = True
-except Exception as e:
-    PROCTORING_AVAILABLE = False
-    print(f"⚠️ MediaPipe Error: {e}")
+if PROCTORING_AVAILABLE:
+    try:
+        mp_face_mesh = mp.solutions.face_mesh
+        face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    except Exception as e:
+        PROCTORING_AVAILABLE = False
+        print(f"⚠️ MediaPipe Init Error: {e}")
 
 class ProctoringProcessor(VideoTransformerBase):
     def __init__(self):
@@ -51,63 +65,67 @@ class ProctoringProcessor(VideoTransformerBase):
 
     def recv(self, frame):
         if not PROCTORING_AVAILABLE:
+            # Pass-through if CV is broken
             return av.VideoFrame.from_ndarray(frame.to_ndarray(format="bgr24"), format="bgr24")
             
         img = frame.to_ndarray(format="bgr24")
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = face_mesh.process(img_rgb)
-        
-        h, w, _ = img.shape
-        face_count = 0
-        status_text = "Secure"
-        color = (0, 255, 0)
-        
-        if results.multi_face_landmarks:
-            face_count = len(results.multi_face_landmarks)
+        try:
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            results = face_mesh.process(img_rgb)
             
-            if face_count > 1:
-                status_text = "MULTIPLE FACES DETECTED!"
-                color = (0, 0, 255)
-            elif face_count == 1:
-                for face_landmarks in results.multi_face_landmarks:
-                    # Head Pose Estimation (Simple Nose vs Ear X-coord check)
-                    nose = face_landmarks.landmark[1]
-                    left_ear = face_landmarks.landmark[234]
-                    right_ear = face_landmarks.landmark[454]
-                    
-                    # Convert to pixel coords
-                    nx, ny = int(nose.x * w), int(nose.y * h)
-                    lx, _ = int(left_ear.x * w), int(left_ear.y * h)
-                    rx, _ = int(right_ear.x * w), int(right_ear.y * h)
-                    
-                    # Check deviation
-                    dist_l = abs(nx - lx)
-                    dist_r = abs(nx - rx)
-                    
-                    ratio = dist_l / (dist_r + 1e-6)
-                    
-                    if ratio < 0.5: # Looking Left
-                        status_text = "LOOKING AWAY (LEFT)"
-                        color = (0, 165, 255)
-                    elif ratio > 2.0: # Looking Right
-                        status_text = "LOOKING AWAY (RIGHT)"
-                        color = (0, 165, 255)
+            h, w, _ = img.shape
+            face_count = 0
+            status_text = "Secure"
+            color = (0, 255, 0)
+            
+            if results.multi_face_landmarks:
+                face_count = len(results.multi_face_landmarks)
+                
+                if face_count > 1:
+                    status_text = "MULTIPLE FACES DETECTED!"
+                    color = (0, 0, 255)
+                elif face_count == 1:
+                    for face_landmarks in results.multi_face_landmarks:
+                        # Head Pose Estimation (Simple Nose vs Ear X-coord check)
+                        nose = face_landmarks.landmark[1]
+                        left_ear = face_landmarks.landmark[234]
+                        right_ear = face_landmarks.landmark[454]
                         
-                    # Draw Nose
-                    cv2.circle(img, (nx, ny), 5, (255, 0, 0), -1)
-        else:
-            status_text = "NO FACE DETECTED"
-            color = (0, 0, 255)
+                        # Convert to pixel coords
+                        nx, ny = int(nose.x * w), int(nose.y * h)
+                        lx, _ = int(left_ear.x * w), int(left_ear.y * h)
+                        rx, _ = int(right_ear.x * w), int(right_ear.y * h)
+                        
+                        # Check deviation
+                        dist_l = abs(nx - lx)
+                        dist_r = abs(nx - rx)
+                        
+                        ratio = dist_l / (dist_r + 1e-6)
+                        
+                        if ratio < 0.5: # Looking Left
+                            status_text = "LOOKING AWAY (LEFT)"
+                            color = (0, 165, 255)
+                        elif ratio > 2.0: # Looking Right
+                            status_text = "LOOKING AWAY (RIGHT)"
+                            color = (0, 165, 255)
+                            
+                        # Draw Nose
+                        cv2.circle(img, (nx, ny), 5, (255, 0, 0), -1)
+            else:
+                status_text = "NO FACE DETECTED"
+                color = (0, 0, 255)
+                
+            # Draw Status
+            cv2.putText(img, f"Status: {status_text}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
             
-        # Draw Status
-        cv2.putText(img, f"Status: {status_text}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-        
-        # Border for warning
-        if color != (0, 255, 0):
-             cv2.rectangle(img, (0,0), (w,h), color, 10)
+            # Border for warning
+            if color != (0, 255, 0):
+                cv2.rectangle(img, (0,0), (w,h), color, 10)
+                
+        except Exception:
+            pass # Fail silently during processing
              
         return av.VideoFrame.from_ndarray(img, format="bgr24")
-    st.stop()
 
 # Configure Gemini
 genai.configure(api_key=API_KEY)
