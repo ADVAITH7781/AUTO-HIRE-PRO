@@ -139,11 +139,21 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         print(f"❌ Failed to send email: {e}")
 
 def extract_text_from_pdf(file):
-    reader = PdfReader(file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() or ""
-    return text
+    try:
+        reader = PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            try:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted
+            except Exception as e:
+                print(f"⚠️ Error parsing PDF page: {e}")
+                continue
+        return text
+    except Exception as e:
+        st.error(f"Error reading PDF file: {e}")
+        return ""
 
 def extract_text_from_docx(file):
     doc = Document(file)
