@@ -35,8 +35,14 @@ except FileNotFoundError:
     st.error("⚠️ Secrets file not found! Please create .streamlit/secrets.toml")
 
 # ---------------- CV PROCTORING LOGIC ----------------
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+# ---------------- CV PROCTORING LOGIC ----------------
+try:
+    mp_face_mesh = mp.solutions.face_mesh
+    face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    PROCTORING_AVAILABLE = True
+except Exception as e:
+    PROCTORING_AVAILABLE = False
+    print(f"⚠️ MediaPipe Error: {e}")
 
 class ProctoringProcessor(VideoTransformerBase):
     def __init__(self):
@@ -44,6 +50,9 @@ class ProctoringProcessor(VideoTransformerBase):
         self.last_warn = 0
 
     def recv(self, frame):
+        if not PROCTORING_AVAILABLE:
+            return av.VideoFrame.from_ndarray(frame.to_ndarray(format="bgr24"), format="bgr24")
+            
         img = frame.to_ndarray(format="bgr24")
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         results = face_mesh.process(img_rgb)
