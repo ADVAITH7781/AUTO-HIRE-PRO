@@ -303,8 +303,6 @@ def main():
         """, unsafe_allow_html=True)
         
         mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
-        
-
 
     df = load_data()
     apps_df = load_apps()
@@ -335,41 +333,12 @@ def main():
                 if go and selected:
                     st.session_state['view_co'] = selected
         
+        with col2:
             st.image("https://plus.unsplash.com/premium_photo-1661284854813-08e375e2f759?q=80&w=2069&auto=format&fit=crop", use_container_width=True)
 
         st.markdown("<br><br>", unsafe_allow_html=True)
 
-        # "How it Works" Section
-        st.markdown("<h3 style='text-align:center;'>How AutoHire Pro Works</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:#64748B; margin-bottom:3rem;'>Simplicity meets Intelligence.</p>", unsafe_allow_html=True)
-        
-        s1, s2, s3 = st.columns(3)
-        with s1:
-            st.markdown("""
-                <div class="saas-card">
-                    <div class="step-num">1</div>
-                    <h4>Upload Profile</h4>
-                    <p style="font-size: 0.9rem; color: #64748B;">Drag & drop your resume (PDF/DOCX). Our system parses it instantly.</p>
-                </div>
-            """, unsafe_allow_html=True)
-        with s2:
-            st.markdown("""
-                <div class="saas-card">
-                    <div class="step-num">2</div>
-                    <h4>AI Analysis</h4>
-                    <p style="font-size: 0.9rem; color: #64748B;">Gemini AI compares your skills against the Job Description in real-text.</p>
-                </div>
-            """, unsafe_allow_html=True)
-        with s3:
-            st.markdown("""
-                <div class="saas-card">
-                    <div class="step-num">3</div>
-                    <h4>Instant Feedback</h4>
-                    <p style="font-size: 0.9rem; color: #64748B;">Get a match score and next steps delivered straight to your inbox.</p>
-                </div>
-            """, unsafe_allow_html=True)
-
-        # Job Application Section (If Selected)
+        # Job Application Section (Moved ABOVE How it Works)
         if st.session_state.get('view_co') and not df.empty:
             target = st.session_state['view_co']
             if target in df["Company"].values:
@@ -430,6 +399,38 @@ def main():
                                     else:
                                         st.info(f"Application Sent. Score: {score}")
                     st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+
+        # "How it Works" Section (MOVED TO BOTTOM)
+        st.markdown("<h3 style='text-align:center;'>How AutoHire Pro Works</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:#64748B; margin-bottom:3rem;'>Simplicity meets Intelligence.</p>", unsafe_allow_html=True)
+        
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">1</div>
+                    <h4>Upload Profile</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Drag & drop your resume (PDF/DOCX). Our system parses it instantly.</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with s2:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">2</div>
+                    <h4>AI Analysis</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Advanced AI compares your skills against the Job Description in real-text.</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with s3:
+            st.markdown("""
+                <div class="saas-card">
+                    <div class="step-num">3</div>
+                    <h4>Instant Feedback</h4>
+                    <p style="font-size: 0.9rem; color: #64748B;">Get a match score and next steps delivered straight to your inbox.</p>
+                </div>
+            """, unsafe_allow_html=True)
 
     # ---------------- ADMIN DASHBOARD ----------------
     elif mode == "Admin Dashboard":
@@ -496,7 +497,41 @@ def main():
                                 new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th}
                                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                                 save_data(df)
-                                st.success("Job Published")
+                                # st.balloons() # Removed as per request
+                                st.markdown("""
+                                    <style>
+                                        @keyframes slideIn {
+                                            from { opacity: 0; transform: translateY(10px); }
+                                            to { opacity: 1; transform: translateY(0); }
+                                        }
+                                        .success-card {
+                                            animation: slideIn 0.5s ease-out;
+                                            background-color: #F0FDF4;
+                                            border: 1px solid #16A34A;
+                                            border-left: 5px solid #16A34A;
+                                            border-radius: 8px;
+                                            padding: 1.5rem;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                                            margin-top: 20px;
+                                        }
+                                        .success-icon {
+                                            font-size: 2rem;
+                                            margin-right: 1rem;
+                                        }
+                                    </style>
+                                    <div class="success-card">
+                                        <div class="success-icon">✅</div>
+                                        <div>
+                                            <h3 style="color: #15803d; margin:0; font-size: 1.25rem;">Job Published Successfully</h3>
+                                            <p style="color: #166534; font-size: 1rem; margin-top: 5px; margin-bottom: 0;">Your new role is now live on the network.</p>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                # st.success("Job Published") # Redundant with the card
+                                time.sleep(2.5)
                                 st.rerun()
 
                 st.markdown("### Active Listings")
