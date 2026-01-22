@@ -193,6 +193,11 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         heading = "Great News! 🎉"
         heading_color = "#FF9F1C"
         score_color = "#2ecc71"
+        try:
+            base_url = st.secrets.get("BASE_URL", "http://localhost:8501")
+        except:
+            base_url = "http://localhost:8501"
+            
         body_content = f"""
         <p>We are thrilled to inform you that your profile has been <strong>shortlisted</strong> for the <strong>{role}</strong> position at <strong>{company}</strong>!</p>
         <p>Your Resume Score: <span style="font-size: 18px; font-weight: bold; color: {score_color};">{score}/100</span></p>
@@ -205,7 +210,7 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         </div>
         <p>Please click the link below to proceed:</p>
         <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:8501/?mode=test" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
+            <a href="{base_url}/?mode=test" style="background-color: #FF9F1C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Start Aptitude Test</a>
         </div>
         """
     else:
