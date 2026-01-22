@@ -311,79 +311,128 @@ QUESTIONS_DIR = os.path.join(BASE_DIR, "questions")
 if not os.path.exists(QUESTIONS_DIR): os.makedirs(QUESTIONS_DIR)
 
 def generate_question_bank(jd_text, job_id):
-    """Generates 100 questions in 4 batches and saves to JSON."""
-    questions = []
-    topics = [
+    """Generates 50 Technical Qs (Job Specific) + reuses 50 General Qs (Common Pool)."""
+    
+    # 1. SETUP COMMON POOL (Logical + Situational) - Reuse if exists
+    common_file = os.path.join(QUESTIONS_DIR, "common_pool_v1.json")
+    common_questions = []
+    
+    if os.path.exists(common_file):
+        with open(common_file, "r") as f:
+            common_questions = json.load(f)
+    else:
+        # Generate Common Pool ONCE
+        common_topics = [
+            "Logical Reasoning & IQ (General)",
+            "Situational Judgment (Professional Workplace)",
+        ]
+        model = genai.GenerativeModel('gemini-flash-latest')
+        for topic in common_topics:
+            try:
+                # Ask for 25 each
+                prompt = f"""
+                Generate 25 Multiple Choice Questions (MCQs).
+                FOCUS AREA: {topic}
+                TAG: General
+                OUTPUT FORMAT (JSON): [{{"q": "...", "options": [...], "answer": "...", "type": "General"}}]
+                """
+                response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                batch = json.loads(response.text)
+                if isinstance(batch, list):
+                    # Ensure type tag exists
+                    for b in batch: b["type"] = "General"
+                    common_questions.extend(batch)
+                time.sleep(1)
+            except Exception as e:
+                print(f"⚠️ Error gen common pool {topic}: {e}")
+        
+        # Save Common Pool
+        with open(common_file, "w") as f:
+            json.dump(common_questions, f)
+
+    # 2. GENERATE JOB SPECIFIC TECHNICAL QUESTIONS (50 Qs)
+    tech_questions = []
+    tech_topics = [
         "Technical Skills in JD (Hard)",
-        "Problem Solving & Logic (Medium)",
-        "Situational Judgment (Professional)",
         "Advanced Role-Specific Scenarios"
     ]
-    
     model = genai.GenerativeModel('gemini-flash-latest')
     
-    for topic in topics:
+    for topic in tech_topics:
         try:
             prompt = f"""
-            Act as a Senior Tech Interviewer. Generate 25 Multiple Choice Questions (MCQs) for this Job Description.
-            
-            JD SUMMARY: {jd_text[:1000]}...
-            
+            Act as a Senior Tech Interviewer. Generate 25 Hard MCQs for this Job Description.
+            JD SUMMARY: {jd_text[:1500]}...
             FOCUS AREA: {topic}
-            
-            OUTPUT FORMAT (Strict JSON Array):
-            [
-                {{"q": "Question text", "options": ["A", "B", "C", "D"], "answer": "Option Text"}}
-            ]
+            TAG: Technical
+            OUTPUT FORMAT (JSON): [{{"q": "...", "options": [...], "answer": "...", "type": "Technical"}}]
             """
             response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
             batch = json.loads(response.text)
             if isinstance(batch, list):
-                questions.extend(batch)
-            time.sleep(1) # Safety buffer for API
+                for b in batch: b["type"] = "Technical"
+                tech_questions.extend(batch)
+            time.sleep(1)
         except Exception as e:
-            print(f"⚠️ Error generating batch {topic}: {e}")
-            continue
-            
+            print(f"⚠️ Error gen tech batch {topic}: {e}")
+
+    # 3. MERGE & SAVE
+    full_bank = tech_questions + common_questions
+    
     # Save to JSON
     q_file = os.path.join(QUESTIONS_DIR, f"{job_id}.json")
     with open(q_file, "w") as f:
-        json.dump(questions, f)
+        json.dump(full_bank, f)
         
     # Save to Word (DOCX)
     try:
         doc = Document()
         doc.add_heading(f'Question Bank: {job_id}', 0)
         
-        for i, q in enumerate(questions):
-            doc.add_paragraph(f"Q{i+1}. {q['q']}", style='List Number')
-            for opt in q['options']:
-                doc.add_paragraph(opt, style='List Bullet')
-            p = doc.add_paragraph()
-            runner = p.add_run(f"Correct Answer: {q['answer']}")
-            runner.bold = True
-            doc.add_paragraph("-" * 50)
+        # Section 1: Technical
+        doc.add_heading('Part 1: Technical (Job Specific)', level=1)
+        for i, q in enumerate(tech_questions):
+            doc.add_paragraph(f"T{i+1}. {q.get('q')}", style='List Number')
+            for opt in q.get('options', []): doc.add_paragraph(opt, style='List Bullet')
+            doc.add_paragraph(f"Answer: {q.get('answer')}", style='Intense Quote')
+            
+        # Section 2: General
+        doc.add_heading('Part 2: General (Common Pool)', level=1)
+        for i, q in enumerate(common_questions):
+            doc.add_paragraph(f"G{i+1}. {q.get('q')}", style='List Number')
+            for opt in q.get('options', []): doc.add_paragraph(opt, style='List Bullet')
+            doc.add_paragraph(f"Answer: {q.get('answer')}", style='Intense Quote')
             
         docx_path = os.path.join(BASE_DIR, f"{job_id}_Question_Bank.docx")
         doc.save(docx_path)
-        print(f"✅ Saved Question Bank DOCX to: {docx_path}")
     except Exception as e:
         print(f"⚠️ Error saving DOCX: {e}")
 
-    return len(questions)
+    return len(full_bank)
 
 def get_candidate_questions(job_id, num_questions=40):
-    """Loads the question bank and returns a random sample."""
+    """Samples 25 Technical + 15 General Questions."""
     q_file = os.path.join(QUESTIONS_DIR, f"{job_id}.json")
-    if not os.path.exists(q_file):
-        return []
+    if not os.path.exists(q_file): return []
     
     with open(q_file, "r") as f:
         bank = json.load(f)
+        
+    tech = [q for q in bank if q.get("type") == "Technical"]
+    general = [q for q in bank if q.get("type") == "General"]
     
-    if len(bank) < num_questions:
-        return bank # Return all if less than requested
-    return random.sample(bank, num_questions)
+    # Fallback if tags missing (older files)
+    if not tech and not general:
+        return random.sample(bank, min(len(bank), num_questions))
+        
+    # Stratified Sampling (25 Tech, 15 General => 40 Total)
+    # If not enough, take what we have
+    n_tech = min(len(tech), 25)
+    n_gen = min(len(general), 15)
+    
+    exam_set = random.sample(tech, n_tech) + random.sample(general, n_gen)
+    random.shuffle(exam_set)
+    return exam_set
 
 # ---------------- VIBRANT SAAS UI IMPLEMENTATION ----------------
 def main():
