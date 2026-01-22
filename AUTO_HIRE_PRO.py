@@ -502,7 +502,7 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
             
-            mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard", "Take Aptitude Test"], label_visibility="collapsed")
+            mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
 
     df = load_data()
     apps_df = load_apps()
