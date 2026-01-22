@@ -34,13 +34,18 @@ except Exception as e:
 
 # ---------------- Config ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-COMPANIES_FILE = os.path.join(BASE_DIR, "companies.xlsx")
-APPS_FILE = os.path.join(BASE_DIR, "applications.csv.xlsx")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
+
+# Files moved to data/ folder for better organization & persistence check
+COMPANIES_FILE = os.path.join(DATA_DIR, "companies.xlsx")
+APPS_FILE = os.path.join(DATA_DIR, "applications.csv.xlsx")
 RESUMES_DIR = os.path.join(BASE_DIR, "resumes")
 JOBS_DIR = os.path.join(BASE_DIR, "job_descriptions")
+QUESTIONS_DIR = os.path.join(BASE_DIR, "questions")
 
 # Ensure directories exist
-for d in [RESUMES_DIR, JOBS_DIR]:
+for d in [RESUMES_DIR, JOBS_DIR, QUESTIONS_DIR, DATA_DIR]:
     if not os.path.exists(d):
         os.makedirs(d)
 
@@ -131,12 +136,11 @@ class ProctoringProcessor(VideoTransformerBase):
 genai.configure(api_key=API_KEY)
 
 # ---------------- Data Handling ----------------
-# ---------------- Data Handling ----------------
 def load_data():
     if os.path.exists(COMPANIES_FILE):
         try:
             df = pd.read_excel(COMPANIES_FILE)
-            required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"]
+            required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"]
             for col in required_cols:
                 if col not in df.columns:
                     df[col] = ""
@@ -145,34 +149,39 @@ def load_data():
             return df
         except Exception as e:
             st.error(f"❌ Error loading data: {e}")
-            print(f"❌ Critical Error loading {COMPANIES_FILE}: {e}")
-            return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
+            return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"])
     else:
         print(f"ℹ️ File not found: {COMPANIES_FILE}, creating new.")
-        df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold"])
+        df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"])
         return df
 
 def save_data(df):
     try:
+        if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
         df.to_excel(COMPANIES_FILE, index=False)
-        print(f"✅ Data saved to {COMPANIES_FILE}")
+        st.toast("✅ Jobs Database Saved!", icon="💾") 
     except Exception as e:
-        st.error(f"❌ Detailed Error Saving Data: {e}")
+        st.error(f"❌ CRITICAL ERROR SAVING DATA: {e}")
 
 def load_apps():
     if os.path.exists(APPS_FILE):
         try:
             df = pd.read_excel(APPS_FILE)
-            for col in ["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"]:
+            cols = ["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"]
+            for col in cols:
                 if col not in df.columns: df[col] = ""
             return df
         except Exception:
-            return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"])
+            return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"])
     else:
-        return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus"])
+        return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"])
 
 def save_apps(df):
-    df.to_excel(APPS_FILE, index=False)
+    try:
+        if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
+        df.to_excel(APPS_FILE, index=False)
+    except Exception as e:
+        st.error(f"❌ Error Saving Applications: {e}")
 
 # ---------------- Email Notification ----------------
 def send_email(candidate_email, score, company, role, email_type="success"):
@@ -698,100 +707,190 @@ def main():
                 st.rerun()
 
     # ---------------- CANDIDATE VIEW ----------------
+    # ---------------- CANDIDATE VIEW (MODERN JOB BOARD) ----------------
     elif mode == "Job Seekers":
-        # Hero Section
-        col1, col2 = st.columns([1.2, 1])
-        with col1:
-            st.markdown("""
-                <h1 class="hero-title">Your Dream Job, <span class="highlight-orange">Found Faster.</span></h1>
-                <p style="font-size: 1.2rem; color: #475569; margin-bottom: 2rem; line-height: 1.6;">
-                    Stop sending resumes into the void. tailored AI analysis matches your profile to the perfect role instantly.
-                </p>
-            """, unsafe_allow_html=True)
+        # Global CSS for this view
+        st.markdown("""
+        <style>
+            .job-card-container {
+                padding: 15px;
+                border-radius: 10px;
+                background: white;
+                border: 1px solid #e2e8f0;
+                margin-bottom: 10px;
+                transition: all 0.2s;
+            }
+            .job-card-container:hover {
+                border-color: var(--primary);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .company-logo-placeholder {
+                width: 40px; 
+                height: 40px; 
+                background: #f1f5f9; 
+                border-radius: 8px; 
+                display: flex; 
+                align-items: center; 
+                justify_content: center;
+                font-weight: bold;
+                color: var(--primary);
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # 1. Top Bar / Hero Lite
+        st.markdown(f"""
+            <div style="margin-bottom: 2rem;">
+                <h2 style="margin:0;">Find your next <span class="highlight-orange">Opportunity</span></h2>
+                <p style="color: #64748b;">Browse {len(df)} active roles matches to your profile.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # 2. Search & Filter
+        search_col, _ = st.columns([2, 1])
+        with search_col:
+            query = st.text_input("🔍 Search by Job Title, Company, or Keywords", placeholder="e.g. Data Scientist, Google...")
             
-            # Search Bar Embedded in Hero
-            with st.container():
-                st.markdown('<div style="background:var(--secondary); padding: 1.5rem; border-radius: 12px;">', unsafe_allow_html=True)
-                c_search, c_btn = st.columns([3, 1])
-                with c_search:
-                    options = df["Company"].unique().tolist() if not df.empty else []
-                    selected = st.selectbox("Find your company...", options, index=None, label_visibility="collapsed", placeholder="Select Company or Role")
-                with c_btn:
-                    go = st.button("Search Jobs", use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                if go and selected:
-                    st.session_state['view_co'] = selected
+        # Filter Logic
+        if not df.empty:
+            if query:
+                filtered_df = df[df['Role'].str.contains(query, case=False) | df['Company'].str.contains(query, case=False)]
+            else:
+                filtered_df = df
+        else:
+            filtered_df = pd.DataFrame()
+            st.info("No jobs posted yet.")
+
+        # 3. Master-Detail Layout
+        col_list, col_detail = st.columns([1.3, 2])
         
-        with col2:
-            st.image("https://plus.unsplash.com/premium_photo-1661284854813-08e375e2f759?q=80&w=2069&auto=format&fit=crop", use_container_width=True)
+        with col_list:
+            st.markdown("### Jobs for you")
+            if not filtered_df.empty:
+                # Use a radio button to act as the "List Selector"
+                # We create formatted labels for display
+                job_options = filtered_df.apply(lambda x: f"{x['Role']}  @  {x['Company']}", axis=1).tolist()
+                
+                # Logic to keep selection if possible
+                current_idx = 0
+                if 'selected_job_index' not in st.session_state:
+                    st.session_state.selected_job_index = 0
+                
+                selected_label = st.radio(
+                    "Select a Job", 
+                    job_options, 
+                    index=0, 
+                    label_visibility="collapsed"
+                )
+                
+                # Clean up UI: Add some spacing or "cards" visual (Radio is plain, but functional)
+                # To make it look like cards, we typically stick to HTML/Buttons, but Radio is safer for logic.
+                # Let's keep Radio for V1 Robustness.
+            else:
+                st.warning("No matching jobs found.")
+                selected_label = None
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-
-        # Job Application Section (Moved ABOVE How it Works)
-        if st.session_state.get('view_co') and not df.empty:
-            target = st.session_state['view_co']
-            if target in df["Company"].values:
-                data = df[df["Company"] == target].iloc[0]
+        with col_detail:
+            if selected_label and not filtered_df.empty:
+                # Find the row based on the selected label
+                # (Assuming uniqueness of Role+Company combinator for now)
+                # A safer way would be using ID map, but this works for demo
+                selected_role = selected_label.split("  @  ")[0]
+                selected_company = selected_label.split("  @  ")[1]
                 
-                st.markdown("<hr style='margin: 4rem 0;'>", unsafe_allow_html=True)
-                st.markdown(f"## Apply to <span class='highlight-orange'>{target}</span>", unsafe_allow_html=True)
+                job_data = filtered_df[(filtered_df['Role'] == selected_role) & (filtered_df['Company'] == selected_company)].iloc[0]
                 
-                job_col, form_col = st.columns([1, 1.5])
-                
-                with job_col:
-                    st.markdown(f"""
-                        <div class="saas-card" style="background: #FAFAFA;">
-                            <h3 style="color:var(--primary);">{data['Role']}</h3>
-                            <p><strong>Location:</strong> Remote / Hybrid</p>
-                            <p><strong>Type:</strong> Full Time</p>
-                            <div style="margin-top: 20px;">
-                                <p style="font-size:0.9rem;">{data['JD'][:200]}...</p>
+                # -- DETAIL VIEW --
+                st.markdown(f"""
+                    <div class="saas-card">
+                        <div style="display:flex; justify-content:space-between; align-items:start;">
+                            <div>
+                                <h2 style="color:var(--primary); margin:0;">{job_data['Role']}</h2>
+                                <h4 style="margin:5px 0 15px 0; color:#475569;">{job_data['Company']}</h4>
                             </div>
-                    """, unsafe_allow_html=True)
-                    
-                    path = data.get("JD_File_Path")
-                    if isinstance(path, str) and os.path.exists(path):
-                        with open(path, "rb") as f:
-                            st.download_button("Download Full Spec", f, file_name=os.path.basename(path), use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                with form_col:
-                    st.markdown('<div class="saas-card">', unsafe_allow_html=True)
-                    st.subheader("Candidate Details")
-                    with st.form("apply_form"):
-                        email = st.text_input("Work Email")
-                        resume = st.file_uploader("Resume Document", type=["pdf", "docx"])
+                            <span style="background:#fef3c7; color:#d97706; padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:bold;">Active Hiring</span>
+                        </div>
                         
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.form_submit_button("Submit Application"):
-                            if not email or not resume:
-                                st.error("Please fill in all fields.")
-                            else:
-                                with st.spinner("Processing..."):
-                                    r_path = os.path.join(RESUMES_DIR, f"{target}_{email}_{resume.name}")
-                                    with open(r_path, "wb") as f: f.write(resume.getbuffer())
+                        <div style="display:flex; gap:10px; margin-bottom:20px;">
+                            <span class="badge">📍 Remote / Hybrid</span>
+                            <span class="badge">💼 Full Time</span>
+                            <span class="badge">⭐ Competitive Salary</span>
+                        </div>
+                        
+                        <hr style="border:0; border-top:1px solid #e2e8f0;">
+                        
+                        <div style="height: 300px; overflow-y: auto; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                            <p style="white-space: pre-wrap; color: #334155; font-family: sans-serif;">{job_data['JD']}</p>
+                        </div>
+                        <br>
+                """, unsafe_allow_html=True)
+                
+                # Check for Download
+                path = job_data.get("JD_File_Path")
+                if isinstance(path, str) and os.path.exists(path):
+                    with open(path, "rb") as f:
+                        st.download_button("📄 Download Official JD", f, file_name=os.path.basename(path))
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+                # -- APPLICATION FORM --
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown('<div class="saas-card" style="border-top: 5px solid var(--primary);">', unsafe_allow_html=True)
+                st.subheader(f"🚀 Apply to {job_data['Company']}")
+                
+                with st.form("apply_form"):
+                    col_a1, col_a2 = st.columns(2)
+                    with col_a1:
+                        email = st.text_input("Your Email Address")
+                    with col_a2:
+                        resume = st.file_uploader("Upload Resume (PDF/DOCX)", type=["pdf", "docx"])
+                    
+                    st.caption("By applying, you agree to our AI processing your resume.")
+                    
+                    if st.form_submit_button("Send Application", use_container_width=True):
+                        if not email or not resume:
+                            st.error("Please provide both Email and Resume.")
+                        else:
+                            with st.spinner("Analyzing Resume & Sending..."):
+                                # LOGIC: SAVE RESUME
+                                if not os.path.exists(RESUMES_DIR): os.makedirs(RESUMES_DIR)
+                                r_path = os.path.join(RESUMES_DIR, f"{job_data['Company']}_{email}_{resume.name}")
+                                with open(r_path, "wb") as f: f.write(resume.getbuffer())
+                                
+                                # LOGIC: SCORE
+                                text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
+                                score = calculate_score(text, job_data["JD"])
+                                
+                                # LOGIC: SAVE APP
+                                new_app = {
+                                    "Company": job_data['Company'], 
+                                    "Role": job_data["Role"], 
+                                    "Email": email, 
+                                    "Score": score, 
+                                    "Resume_Path": r_path, 
+                                    "Timestamp": datetime.datetime.now()
+                                }
+                                apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
+                                save_apps(apps_df)
+                                
+                                # LOGIC: EMAIL
+                                thresh = int(job_data.get("ResumeThreshold", 60))
+                                email_type = "success" if score >= thresh else "rejection"
+                                send_email(email, score, job_data['Company'], job_data["Role"], email_type)
+                                
+                                if score >= thresh:
+                                    st.success(f"🎉 Application Sent! Resume Match: {score}/100")
+                                    st.balloons()
+                                else:
+                                    st.info(f"Application Sent. Resume Match: {score}/100")
                                     
-                                    text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
-                                    score = calculate_score(text, data["JD"])
-                                    
-                                    new_app = {"Company": target, "Role": data["Role"], "Email": email, "Score": score, "Resume_Path": r_path, "Timestamp": datetime.datetime.now()}
-                                    apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
-                                    save_apps(apps_df)
-                                    
-                                    thresh = int(data.get("ResumeThreshold", 60))
-                                    email_type = "success" if score >= thresh else "rejection"
-                                    send_email(email, score, target, data["Role"], email_type)
-                                    
-                                    if score >= thresh:
-                                        st.success(f"Application Sent! Score: {score}")
-                                        st.balloons()
-                                    else:
-                                        st.info(f"Application Sent. Score: {score}")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.image("https://illustrations.popsy.co/amber/working-vacation.svg", width=300)
+                st.info("👈 Select a job from the list to see details and apply.")
+    
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-
         # "How it Works" Section (MOVED TO BOTTOM)
         st.markdown("<h3 style='text-align:center;'>How AutoHire Pro Works</h3>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; color:#64748B; margin-bottom:3rem;'>Simplicity meets Intelligence.</p>", unsafe_allow_html=True)
