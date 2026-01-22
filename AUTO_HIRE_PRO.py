@@ -345,10 +345,31 @@ def generate_question_bank(jd_text, job_id):
             print(f"⚠️ Error generating batch {topic}: {e}")
             continue
             
-    # Save to file
+    # Save to JSON
     q_file = os.path.join(QUESTIONS_DIR, f"{job_id}.json")
     with open(q_file, "w") as f:
         json.dump(questions, f)
+        
+    # Save to Word (DOCX)
+    try:
+        doc = Document()
+        doc.add_heading(f'Question Bank: {job_id}', 0)
+        
+        for i, q in enumerate(questions):
+            doc.add_paragraph(f"Q{i+1}. {q['q']}", style='List Number')
+            for opt in q['options']:
+                doc.add_paragraph(opt, style='List Bullet')
+            p = doc.add_paragraph()
+            runner = p.add_run(f"Correct Answer: {q['answer']}")
+            runner.bold = True
+            doc.add_paragraph("-" * 50)
+            
+        docx_path = os.path.join(BASE_DIR, f"{job_id}_Question_Bank.docx")
+        doc.save(docx_path)
+        print(f"✅ Saved Question Bank DOCX to: {docx_path}")
+    except Exception as e:
+        print(f"⚠️ Error saving DOCX: {e}")
+
     return len(questions)
 
 def get_candidate_questions(job_id, num_questions=40):
@@ -700,7 +721,7 @@ def main():
                                     text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
                                     score = calculate_score(text, data["JD"])
                                     
-                                    new_app = {"Company": target, "Role": data["Role"], "Email": email, "Score": score, "Resume_Path": r_path, "Timestamp": datetime.now()}
+                                    new_app = {"Company": target, "Role": data["Role"], "Email": email, "Score": score, "Resume_Path": r_path, "Timestamp": datetime.datetime.now()}
                                     apps_df = pd.concat([apps_df, pd.DataFrame([new_app])], ignore_index=True)
                                     save_apps(apps_df)
                                     
