@@ -204,6 +204,8 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         score_color = "#2ecc71"
         try:
             base_url = st.secrets.get("BASE_URL", "http://localhost:8501")
+            if base_url.endswith("/"):
+                base_url = base_url.rstrip("/")
         except:
             base_url = "http://localhost:8501"
             
@@ -296,19 +298,39 @@ def calculate_score(resume_text, jd_text):
         try:
             model = genai.GenerativeModel('gemini-flash-latest')
             prompt = f"""
-            You are a strict ATS. Evaluate Resume against JD.
+            Act as a strict Application Tracking System (ATS). 
+            Compare the Resume to the Job Description (JD) and calculate a match score (0-100).
+            
             JD: {jd_text}
             RESUME: {resume_text}
-            SCORING (Max 100):
-            1. Skills (30)
-            2. Experience (40)
-            3. Relevance (30)
-            Output ONLY final integer score.
+            
+            SCORING CRITERIA:
+            1. Technical Skills Match (40%): Keywords overlap.
+            2. Experience Match (30%): Years of experience and role relevance.
+            3. Education & Certifications (30%): Relevant degree/certs.
+            
+            INSTRUCTIONS:
+            - Be critical. Do not give 100 easily.
+            - If irrelevant, score < 20.
+            - OUTPUT FORMAT: You must output the result in this exact format: "Final Score: <number>"
             """
-            generation_config = {"temperature": 0.0, "top_p": 0.0, "top_k": 1}
+            generation_config = {"temperature": 0.0, "top_p": 0.1, "top_k": 1}
             response = model.generate_content(prompt, generation_config=generation_config)
-            score = int(''.join(filter(str.isdigit, response.text)))
-            return score
+            
+            # Robust Parsing
+            import re
+            text = response.text
+            match = re.search(r"Final Score:\s*(\d+)", text, re.IGNORECASE)
+            if match:
+                score = int(match.group(1))
+                return min(100, max(0, score)) # Clamp between 0-100
+            else:
+                # Fallback: try to find any double digit number at the end
+                digits = re.findall(r"\d+", text)
+                if digits: 
+                    return min(100, int(digits[-1]))
+                return 0
+                
         except Exception as e:
             if "429" in str(e) and attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
@@ -1018,6 +1040,12 @@ def main():
 
             st.markdown("<br>", unsafe_allow_html=True)
             
+            # DEBUG: Show Configuration
+            with st.expander("🛠️ Debug Configuration"):
+                debug_url = st.secrets.get("BASE_URL", "Not Set (Using Localhost)")
+                st.write(f"**Current Email Link Base URL:** `{debug_url}`")
+                st.info("If this URL is incorrect, update .streamlit/secrets.toml and reboot.")
+                
             tab_jobs, tab_apps = st.tabs(["Manage Jobs", "View Applications"])
             
             with tab_jobs:
