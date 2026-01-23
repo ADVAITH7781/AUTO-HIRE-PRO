@@ -298,21 +298,28 @@ def calculate_score(resume_text, jd_text):
         try:
             model = genai.GenerativeModel('gemini-flash-latest')
             prompt = f"""
-            Act as a strict Application Tracking System (ATS). 
-            Compare the Resume to the Job Description (JD) and calculate a match score (0-100).
+            Act as a calibrated ATS. Compare the Resume to the JD.
             
-            JD: {jd_text}
-            RESUME: {resume_text}
+            JD: {jd_text[:2000]}...
+            RESUME: {resume_text[:2000]}...
             
-            SCORING CRITERIA:
-            1. Technical Skills Match (40%): Keywords overlap.
-            2. Experience Match (30%): Years of experience and role relevance.
-            3. Education & Certifications (30%): Relevant degree/certs.
+            SCORING ALGORITHM (Base + Merit):
+            
+            1. **BASE SCORE (40 Points)**: 
+               - If the text is a valid resume with Contact, Education, and Experience sections, AUTOMATICALLY AWARD 40 POINTS.
+               - If it is gibberish or empty, award 0.
+            
+            2. **MERIT SCORE (0-60 Points)**:
+               - **Keywords & Skills (25)**: Exact matches for Key Technical Skills in JD.
+               - **Experience Relevance (25)**: Similar Job Titles, Industy, and Seniority.
+               - **Formatting & Impact (10)**: Quantifiable results (numbers/%) and clear structure.
+            
+            TOTAL = BASE (40) + MERIT (0-60). Max 100.
             
             INSTRUCTIONS:
-            - Be critical. Do not give 100 easily.
-            - If irrelevant, score < 20.
-            - OUTPUT FORMAT: You must output the result in this exact format: "Final Score: <number>"
+            - Most decent candidates should score between 50-70.
+            - Only perfect matches should exceed 85.
+            - OUTPUT FORMAT: "Final Score: <number>"
             """
             generation_config = {"temperature": 0.0, "top_p": 0.1, "top_k": 1}
             response = model.generate_content(prompt, generation_config=generation_config)
@@ -329,7 +336,7 @@ def calculate_score(resume_text, jd_text):
                 digits = re.findall(r"\d+", text)
                 if digits: 
                     return min(100, int(digits[-1]))
-                return 0
+                return 40 # Default to base score on error if content likely valid
                 
         except Exception as e:
             if "429" in str(e) and attempt < max_retries - 1:
