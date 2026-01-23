@@ -140,19 +140,18 @@ def load_data():
     if os.path.exists(COMPANIES_FILE):
         try:
             df = pd.read_excel(COMPANIES_FILE)
-            required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"]
+            required_cols = ["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID", "HasQuestions"]
             for col in required_cols:
                 if col not in df.columns:
-                    df[col] = ""
+                    df[col] = "Pending" # Default to pending for new fields
             df = df.fillna("")
-            # st.write(f"DEBUG: Loaded data from {COMPANIES_FILE}, Records: {len(df)}") # Uncomment for UI debug
             return df
         except Exception as e:
             st.error(f"❌ Error loading data: {e}")
-            return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"])
+            return pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID", "HasQuestions"])
     else:
         print(f"ℹ️ File not found: {COMPANIES_FILE}, creating new.")
-        df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID"])
+        df = pd.DataFrame(columns=["Company", "Role", "JD", "JD_File_Path", "ResumeThreshold", "AptitudeThreshold", "Job_ID", "HasQuestions"])
         return df
 
 def save_data(df):
@@ -1070,6 +1069,32 @@ def main():
             tab_jobs, tab_apps = st.tabs(["Manage Jobs", "View Applications"])
             
             with tab_jobs:
+                # --- PENDING ACTIONS SECTION ---
+                pending_jobs = df[df['HasQuestions'] == 'Pending']
+                if not pending_jobs.empty:
+                    st.warning(f"⚠️ Action Required: {len(pending_jobs)} job(s) need Aptitude Tests generated.")
+                    for idx, row in pending_jobs.iterrows():
+                        with st.container():
+                            c_p1, c_p2 = st.columns([3, 1])
+                            with c_p1:
+                                st.markdown(f"**{row['Role']}** ({row['Company']})")
+                            with c_p2:
+                                if st.button(f"⚙️ Generate Test", key=f"gen_{idx}"):
+                                    with st.spinner("🤖 AI is reading JD & Generating Question Bank..."):
+                                        cnt = generate_question_bank(row['JD'], row['Job_ID'])
+                                    
+                                    # Update Status
+                                    df.at[idx, 'HasQuestions'] = 'Done'
+                                    save_data(df)
+                                    st.success(f"✅ Generated {cnt} Questions!")
+                                    st.rerun()
+                                    
+                                if st.button("Skip", key=f"skip_{idx}"):
+                                    df.at[idx, 'HasQuestions'] = 'Skipped'
+                                    save_data(df)
+                                    st.rerun()
+                            st.divider()
+
                 with st.expander("➕ Create New Job Opening", expanded=False):
                     with st.form("new_job"):
                         jc1, jc2 = st.columns(2)
@@ -1093,29 +1118,23 @@ def main():
                                 job_id = f"{co_name}_{role_name}".replace(" ", "_")
                                 
                                 # Save Job Data WITHOUT generating questions yet
-                                new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th, "Job_ID": job_id}
+                                new = {
+                                    "Company": co_name, 
+                                    "Role": role_name, 
+                                    "JD": jtxt, 
+                                    "JD_File_Path": jp, 
+                                    "ResumeThreshold": r_th, 
+                                    "AptitudeThreshold": a_th, 
+                                    "Job_ID": job_id,
+                                    "HasQuestions": "Pending"
+                                }
                                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                                 save_data(df)
                                 
-                                # Set Session State for Post-Process
-                                st.session_state['last_published_job'] = {"id": job_id, "text": jtxt, "role": role_name}
-                                
-                                st.success(f"Job {role_name} Published! Proceed to Generate Questions below.")
-                
-                # --- MANUAL QUESTION GENERATION TRIGGER ---
-                if 'last_published_job' in st.session_state:
-                    last_job = st.session_state['last_published_job']
-                    st.markdown("---")
-                    st.info(f"👉 **Next Step:** Generate Aptitude Test for **{last_job['role']}**")
-                    
-                    if st.button(f"⚙️ Generate Aptitude Test & Word Doc"):
-                        with st.spinner("🤖 AI is reading JD & Generating Question Bank..."):
-                            cnt = generate_question_bank(last_job['text'], last_job['id'])
-                        
-                        st.success(f"✅ Generated {cnt} Questions!")
-                        st.markdown(f"**Saved:** `{last_job['id']}_Question_Bank.docx`")
-                        del st.session_state['last_published_job']
-                        st.balloons()
+                                st.success(f"Job {role_name} Published! Check 'Pending Actions' to generate tests.")
+                                st.balloons()
+                                time.sleep(1)
+                                st.rerun()
 
 
                 st.markdown("### Active Listings")
