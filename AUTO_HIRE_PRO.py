@@ -1040,52 +1040,34 @@ def main():
                                 with open(jp, "wb") as f: f.write(jd_file.getbuffer())
                                 jtxt = extract_text_from_pdf(jd_file) if jd_file.name.endswith(".pdf") else extract_text_from_docx(jd_file)
                                 
-                                # Generate Question Bank
+                                # Job ID
                                 job_id = f"{co_name}_{role_name}".replace(" ", "_")
-                                with st.spinner("🤖 AI is reading JD & Generating 100-Question Exam Bank... (This takes ~15s)"):
-                                    cnt = generate_question_bank(jtxt, job_id)
                                 
+                                # Save Job Data WITHOUT generating questions yet
                                 new = {"Company": co_name, "Role": role_name, "JD": jtxt, "JD_File_Path": jp, "ResumeThreshold": r_th, "AptitudeThreshold": a_th, "Job_ID": job_id}
                                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                                 save_data(df)
                                 
-                                st.balloons()
-                                st.snow()
-                                st.markdown(f"""
-                                    <style>
-                                        @keyframes slideIn {{
-                                            from {{ opacity: 0; transform: translateY(10px); }}
-                                            to {{ opacity: 1; transform: translateY(0); }}
-                                        }}
-                                        .success-card {{
-                                            animation: slideIn 0.5s ease-out;
-                                            background-color: #F0FDF4;
-                                            border: 1px solid #16A34A;
-                                            border-left: 5px solid #16A34A;
-                                            border-radius: 8px;
-                                            padding: 1.5rem;
-                                            display: flex;
-                                            align-items: center;
-                                            justify-content: center;
-                                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                                            margin-top: 20px;
-                                        }}
-                                        .success-icon {{
-                                            font-size: 2rem;
-                                            margin-right: 1rem;
-                                        }}
-                                    </style>
-                                    <div class="success-card">
-                                        <div class="success-icon">✅</div>
-                                        <div>
-                                            <h3 style="color: #15803d; margin:0; font-size: 1.25rem;">Job Published Successfully</h3>
-                                            <p style="color: #166534; font-size: 1rem; margin-top: 5px; margin-bottom: 0;">100-Question Exam Bank Generated.</p>
-                                        </div>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                # st.success("Job Published")
-                                time.sleep(3)
-                                st.rerun()
+                                # Set Session State for Post-Process
+                                st.session_state['last_published_job'] = {"id": job_id, "text": jtxt, "role": role_name}
+                                
+                                st.success(f"Job {role_name} Published! Proceed to Generate Questions below.")
+                
+                # --- MANUAL QUESTION GENERATION TRIGGER ---
+                if 'last_published_job' in st.session_state:
+                    last_job = st.session_state['last_published_job']
+                    st.markdown("---")
+                    st.info(f"👉 **Next Step:** Generate Aptitude Test for **{last_job['role']}**")
+                    
+                    if st.button(f"⚙️ Generate Aptitude Test & Word Doc"):
+                        with st.spinner("🤖 AI is reading JD & Generating Question Bank..."):
+                            cnt = generate_question_bank(last_job['text'], last_job['id'])
+                        
+                        st.success(f"✅ Generated {cnt} Questions!")
+                        st.markdown(f"**Saved:** `{last_job['id']}_Question_Bank.docx`")
+                        del st.session_state['last_published_job']
+                        st.balloons()
+
 
                 st.markdown("### Active Listings")
                 if not df.empty:
