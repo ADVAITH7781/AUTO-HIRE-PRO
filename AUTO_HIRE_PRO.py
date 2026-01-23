@@ -622,15 +622,24 @@ def main():
     
     # ---------------- HELPER: VERIFY TOKEN ----------------
     def verify_token(email, password):
-        user = apps_df[apps_df['Email'] == email]
-        if user.empty: return False, "Email not found."
+        # 1. Find all apps by this email
+        user_apps = apps_df[apps_df['Email'] == email]
+        if user_apps.empty: return False, "Email not found."
         
-        user = user.iloc[0]
-        if user['Status'] != 'Shortlisted': return False, "You have not been shortlisted yet."
+        # 2. Check if ANY credential matches the provided password
+        # This handles cases where a user applied multiple times (some rejected, some shortlisted)
+        # We need to find the specific application record that matches this password.
+        match = user_apps[user_apps['TestPassword'].astype(str).str.strip() == password.strip()]
         
-        stored_pass = str(user['TestPassword']).strip()
-        if stored_pass != password.strip(): return False, "Invalid Password."
+        if match.empty:
+            return False, "Invalid Password or Application not found."
+            
+        user = match.iloc[0] # Take the matching record
         
+        # 3. Validation Checks
+        if user['Status'] != 'Shortlisted': 
+            return False, "Access Denied: You have not been shortlisted yet."
+            
         # Check Expiry (30 Hours)
         try:
             token_time = pd.to_datetime(user['TokenTime'])
