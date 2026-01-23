@@ -881,27 +881,27 @@ def main():
                 
                 # -- DETAIL VIEW --
                 st.markdown(f"""
-                    <div class="saas-card">
-                        <div style="display:flex; justify-content:space-between; align-items:start;">
-                            <div>
-                                <h2 style="color:var(--primary); margin:0;">{job_data['Role']}</h2>
-                                <h4 style="margin:5px 0 15px 0; color:#475569;">{job_data['Company']}</h4>
-                            </div>
-                            <span style="background:#fef3c7; color:#d97706; padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:bold;">Active Hiring</span>
-                        </div>
-                        
-                        <div style="display:flex; gap:10px; margin-bottom:20px;">
-                            <span class="badge">📍 Remote / Hybrid</span>
-                            <span class="badge">💼 Full Time</span>
-                            <span class="badge">⭐ Competitive Salary</span>
-                        </div>
-                        
-                        <hr style="border:0; border-top:1px solid #e2e8f0;">
-                        
-                        <div style="height: 300px; overflow-y: auto; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #f1f5f9;">
-                            <p style="white-space: pre-wrap; color: #334155; font-family: sans-serif;">{job_data['JD']}</p>
-                        </div>
-                        <br>
+<div class="saas-card">
+    <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div>
+            <h2 style="color:var(--primary); margin:0;">{job_data['Role']}</h2>
+            <h4 style="margin:5px 0 15px 0; color:#475569;">{job_data['Company']}</h4>
+        </div>
+        <span style="background:#fef3c7; color:#d97706; padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:bold;">Active Hiring</span>
+    </div>
+    
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <span class="badge">📍 Remote / Hybrid</span>
+        <span class="badge">💼 Full Time</span>
+        <span class="badge">⭐ Competitive Salary</span>
+    </div>
+    
+    <hr style="border:0; border-top:1px solid #e2e8f0;">
+    
+    <div style="height: 300px; overflow-y: auto; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #f1f5f9;">
+        <p style="white-space: pre-wrap; color: #334155; font-family: sans-serif;">{job_data['JD']}</p>
+    </div>
+    <br>
                 """, unsafe_allow_html=True)
                 
                 # Check for Download
