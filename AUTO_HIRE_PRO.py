@@ -17,7 +17,7 @@ try:
     import cv2
     import mediapipe as mp
     import av
-    from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+    from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
     import numpy as np
     PROCTORING_AVAILABLE = True
 except ImportError as e:
@@ -66,14 +66,17 @@ if PROCTORING_AVAILABLE:
 class ProctoringProcessor(VideoTransformerBase):
     def __init__(self):
         self.warn_count = 0
-        self.last_warn = 0
+        self.last_warn = time.time()
+        self.frame_count = 0
 
     def recv(self, frame):
-        if not PROCTORING_AVAILABLE:
-            # Pass-through if CV is broken
-            return av.VideoFrame.from_ndarray(frame.to_ndarray(format="bgr24"), format="bgr24")
-            
         img = frame.to_ndarray(format="bgr24")
+        
+        # Performance: Process every 2nd frame to reduce lag
+        self.frame_count += 1
+        if self.frame_count % 2 != 0:
+             return av.VideoFrame.from_ndarray(img, format="bgr24")
+
         try:
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(img_rgb)
@@ -82,6 +85,7 @@ class ProctoringProcessor(VideoTransformerBase):
             face_count = 0
             status_text = "Secure"
             color = (0, 255, 0)
+            violation = False
             
             if results.multi_face_landmarks:
                 face_count = len(results.multi_face_landmarks)
@@ -89,6 +93,7 @@ class ProctoringProcessor(VideoTransformerBase):
                 if face_count > 1:
                     status_text = "MULTIPLE FACES DETECTED!"
                     color = (0, 0, 255)
+                    violation = True
                 elif face_count == 1:
                     for face_landmarks in results.multi_face_landmarks:
                         # Head Pose Estimation (Simple Nose vs Ear X-coord check)
@@ -105,30 +110,42 @@ class ProctoringProcessor(VideoTransformerBase):
                         dist_l = abs(nx - lx)
                         dist_r = abs(nx - rx)
                         
+                        # Avoid division by zero
                         ratio = dist_l / (dist_r + 1e-6)
                         
                         if ratio < 0.5: # Looking Left
                             status_text = "LOOKING AWAY (LEFT)"
                             color = (0, 165, 255)
+                            violation = True
                         elif ratio > 2.0: # Looking Right
                             status_text = "LOOKING AWAY (RIGHT)"
                             color = (0, 165, 255)
+                            violation = True
                             
                         # Draw Nose
                         cv2.circle(img, (nx, ny), 5, (255, 0, 0), -1)
             else:
                 status_text = "NO FACE DETECTED"
                 color = (0, 0, 255)
+                # violation = True # Optional: Strict no-face
                 
-            # Draw Status
-            cv2.putText(img, f"Status: {status_text}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+            # Cooldown & Increment
+            if violation:
+                now = time.time()
+                if now - self.last_warn > 4.0: # 4 Seconds Cooldown
+                    self.warn_count += 1
+                    self.last_warn = now
             
-            # Border for warning
+            # Draw Status & Warnings
+            cv2.putText(img, f"Status: {status_text}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            cv2.putText(img, f"WARNINGS: {self.warn_count}/5", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            
+            # Visual Alarm
             if color != (0, 255, 0):
                 cv2.rectangle(img, (0,0), (w,h), color, 10)
                 
-        except Exception:
-            pass # Fail silently during processing
+        except Exception as e:
+            print(f"Proctor Loop Error: {e}")
              
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
@@ -427,6 +444,7 @@ def generate_question_bank(jd_text, job_id):
         json.dump(full_bank, f)
         
     # Save to Word (DOCX)
+    docx_path = None
     try:
         doc = Document()
         doc.add_heading(f'Question Bank: {job_id}', 0)
@@ -450,7 +468,7 @@ def generate_question_bank(jd_text, job_id):
     except Exception as e:
         print(f"⚠️ Error saving DOCX: {e}")
 
-    return len(full_bank)
+    return len(full_bank), docx_path
 
 def get_candidate_questions(job_id, num_questions=40):
     """Samples 25 Technical + 15 General Questions."""
@@ -655,28 +673,72 @@ def main():
     if mode == "Take Aptitude Test":
         st.markdown("<h1 style='text-align: center; color: #FF6B00;'>🔐 Candidate Test Portal</h1>", unsafe_allow_html=True)
         
-        if 'test_session' not in st.session_state:
-            st.session_state.test_session = None
+        # Init Session Vars
+        if 'test_session' not in st.session_state: st.session_state.test_session = None
+        if 'test_stage' not in st.session_state: st.session_state.test_stage = 'login'
+        if 'warning_count' not in st.session_state: st.session_state.warning_count = 0
             
-        if st.session_state.test_session is None:
-            with st.form("test_login"):
-                st.subheader("Secure Login")
-                email = st.text_input("Registered Email")
-                pwd = st.text_input("Test Password (from Email)")
-                
-                if st.form_submit_button("Start Test"):
-                    valid, res = verify_token(email, pwd)
-                    if valid:
-                        st.session_state.test_session = res
-                        st.success("Verified! Loading Test Environmet...")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"Access Denied: {res}")
-        else:
-            # APTITUDE TEST INTERFACE
+        # --- STAGE 1: LOGIN ---
+        if st.session_state.test_stage == 'login':
+            if st.session_state.test_session is None:
+                with st.form("test_login"):
+                    st.subheader("Secure Login")
+                    email = st.text_input("Registered Email")
+                    pwd = st.text_input("Test Password (from Email)")
+                    
+                    if st.form_submit_button("Proceed"):
+                        valid, res = verify_token(email, pwd)
+                        if valid:
+                            st.session_state.test_session = res
+                            st.session_state.test_stage = 'rules'
+                            st.success("Verified! Proceeding to System Check...")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"Access Denied: {res}")
+            else:
+               st.session_state.test_stage = 'rules' # Auto advance if already logged in
+               st.rerun()
+
+        # --- STAGE 2: RULES & CAMERA CHECK ---
+        elif st.session_state.test_stage == 'rules':
             user = st.session_state.test_session
-            st.title(f"📝 Aptitude Test: {user['Role']}")
+            st.title(f"Welcome, {user.get('Name', 'Candidate')}")
+            st.info(f"Role: {user['Role']}")
+            
+            st.markdown("""
+            ### 📜 Examination Rules (Strict)
+            1.  **Camera Must Be On**: You must stay in the frame at all times.
+            2.  **No Multiple Faces**: Only you should be visible.
+            3.  **No Looking Away**: Looking left/right frequently is flagged.
+            4.  **No Mobile Phones**: Detected phones will trigger immediate warning.
+            5.  **No Speaking**: Audio environment must be silent.
+            
+            > 🚨 **Critical**: If you receive **5 Warnings**, the test will **Terminate Immediately**.
+            """)
+            
+            metric_col = st.columns(2)
+            metric_col[0].metric("Duration", "45 Minutes")
+            metric_col[1].metric("Strictness", "High")
+            
+            st.markdown("### 📸 System Check")
+            st.write("Please verify your camera is working below. Ensure you are clearly visible.")
+            
+            # Preview Camera
+            webrtc_streamer(key="camera_preview", mode=WebRtcMode.SENDRECV, 
+                          rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+                          video_transformer_factory=ProctoringProcessor,
+                          media_stream_constraints={"video": True, "audio": False})
+                          
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("✅ I Agree & Start Test", type="primary"):
+                st.session_state.test_stage = 'exam'
+                st.rerun()
+
+        # --- STAGE 3: EXAM ---
+        # --- STAGE 3: EXAM ---
+        elif st.session_state.test_stage == 'exam':
+            user = st.session_state.test_session
             
             # --- JAVASCRIPT PROCTORING ---
             st.components.v1.html("""
@@ -686,62 +748,134 @@ def main():
                         window.parent.postMessage({type: 'violation', msg: 'Tab Switch Detected!'}, '*');
                     }
                 });
-                window.onblur = function() {
-                    window.parent.postMessage({type: 'violation', msg: 'Window Focus Lost!'}, '*');
-                };
                 </script>
             """, height=0)
-
-            # --- LAYOUT ---
-            col_q, col_cam = st.columns([3, 1])
             
-            with col_cam:
-                st.markdown("### 📹 Proctoring Active")
-                st.info("Keep your face in the frame. Do not look away.")
-                webrtc_streamer(key="proctor", video_processor_factory=ProctoringProcessor)
+            # Layout
+            p_col, q_col = st.columns([1, 3])
+            
+            with p_col:
+                st.markdown("### 🛡️ Proctoring")
+                st.caption("Live Monitoring Active")
                 
-            with col_q:
+                # Live Camera
+                ctx = webrtc_streamer(key="active_proctor", mode=WebRtcMode.SENDRECV,
+                                    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+                                    video_transformer_factory=ProctoringProcessor,
+                                    media_stream_constraints={"video": True, "audio": False})
+                
+                # Status Panel
+                warns = st.session_state.warning_count
+                st.metric("Warnings", f"{warns}/5", delta_color="inverse")
+                
+                if warns >= 3:
+                     st.error("⚠️ CRITICAL WARNING")
+                     
+                # Update Warning Count from Processor
+                if ctx.video_transformer:
+                    new_warns = ctx.video_transformer.warn_count
+                    if new_warns > st.session_state.warning_count:
+                        st.session_state.warning_count = new_warns
+                        st.rerun()
+                        
+                # Auto-Termination Check
+                if st.session_state.warning_count >= 5:
+                    st.session_state.test_stage = 'terminated'
+                    st.rerun()
+
+            with q_col:
+                st.title(f"📝 Aptitude Test: {user['Role']}")
+                st.info("Answer all questions. Do not switch tabs.")
+                
                 # Load Questions
-                job_id = user['Role'].replace(" ", "_") # Fallback ID logic if job_id missing in older data
-                # Try to fuzzy match job_id from company if possible, or just use what we have
-                # ideally we should have saved job_id in apps_df but for now let's try to fetch
-                questions = get_candidate_questions(f"{user['Company']}_{user['Role']}".replace(" ", "_"))
+                if 'exam_questions' not in st.session_state:
+                    qs = get_candidate_questions(user['Job_ID'])
+                    if not qs:
+                         st.error("Error loading questions.")
+                    st.session_state.exam_questions = qs
                 
-                if not questions:
-                    st.warning("No questions generated for this role yet. Please contact Admin.")
-                else:
-                    with st.form("exam_form"):
+                questions = st.session_state.exam_questions
+                
+                if questions:
+                    with st.form("exam_submission"):
                         answers = {}
                         for i, q in enumerate(questions):
-                            st.markdown(f"**Q{i+1}. {q['q']}**")
-                            # Encode options carefully
-                            opts = q['options']
-                            answers[i] = st.radio(f"Select Answer {i}", opts, key=f"q{i}", label_visibility="collapsed")
-                            st.markdown("---")
-                            
+                            st.markdown(f"**Q{i+1}. {q.get('q')}**")
+                            # Sanitize options
+                            opts = q.get('options', [])
+                            ans = st.radio(f"Select Answer for Q{i+1}", opts, key=f"q_{i}", index=None)
+                            answers[i] = ans
+                            st.divider()
+                        
                         if st.form_submit_button("Submit Test"):
-                            score = 0
-                            for i, q in enumerate(questions):
-                                if answers[i] == q['answer']:
-                                    score += 1
+                            # Calculate Score
+                            raw_score = 0
+                            total = len(questions)
                             
-                            final_score = (score / len(questions)) * 100
+                            for i, q in enumerate(questions):
+                                user_ans = str(answers.get(i)).strip()
+                                correct = str(q.get('answer')).strip()
+                                
+                                # Flexible match
+                                if user_ans == correct:
+                                    raw_score += 1
+                                elif user_ans in correct or correct in user_ans:
+                                    if len(user_ans) > 5 and len(correct) > 5: raw_score += 1
                             
                             # Save Results
-                            apps_df.loc[apps_df['Email'] == user['Email'], 'TestStatus'] = 'Completed'
-                            apps_df.loc[apps_df['Email'] == user['Email'], 'TestScore'] = final_score
-                            save_apps(apps_df)
+                            idx = apps_df[apps_df['Email'] == user['Email']].index
+                            if not idx.empty:
+                                apps_df.at[idx[0], 'TestScore'] = raw_score # Raw Score (x/Total)
+                                apps_df.at[idx[0], 'TestStatus'] = 'Completed'
+                                save_apps(apps_df)
                             
-                            st.success(f"Test Submitted! Your Score: {final_score:.1f}%")
-                            st.balloons()
-                            time.sleep(3)
-                            
-                            st.session_state.test_session = None
+                            st.session_state.test_stage = 'submitted'
                             st.rerun()
+                
+        # --- STAGE 4: TERMINATED ---
+        elif st.session_state.test_stage == 'terminated':
+             st.error("TEST TERMINATED")
+             st.markdown("""
+             <div style='background-color:#ffeeba; padding:20px; border-radius:10px; border: 2px solid #dc3545; text-align:center;'>
+                 <h1 style='color:#dc3545;'>❌ EXAM TERMINATED</h1>
+                 <h3>Malpractice Detected</h3>
+                 <p>You exceeded the maximum number of proctoring warnings (5/5). Your test has been cancelled and flagged for review.</p>
+                 <p>An email has been sent to the administration.</p>
+             </div>
+             """, unsafe_allow_html=True)
+             
+             # Save Status as Malpractice
+             # We do this once to avoid overwriting or redundant saves
+             user = st.session_state.test_session
+             idx = apps_df[apps_df['Email'] == user['Email']].index
+             if not idx.empty:
+                 if apps_df.at[idx[0], 'TestStatus'] != 'Terminated (Malpractice)':
+                     apps_df.at[idx[0], 'TestStatus'] = 'Terminated (Malpractice)'
+                     save_apps(apps_df)
+                     # Trigger Email (Placeholder)
+                     # send_email(user['Email'], 0, user['Company'], user['Role'], "malpractice")
+             
+             if st.button("Return to Home"):
+                 st.session_state.test_session = None
+                 st.session_state.test_stage = 'login'
+                 st.rerun()
 
-            if st.button("Logout / Quit"):
-                st.session_state.test_session = None
-                st.rerun()
+        # --- STAGE 5: SUBMITTED ---
+        elif st.session_state.test_stage == 'submitted':
+             st.success("Exam Submitted Successfully")
+             st.markdown("""
+             <div style='background-color:#d1e7dd; padding:20px; border-radius:10px; border: 2px solid #198754; text-align:center;'>
+                 <h1 style='color:#198754;'>✅ Test Completed</h1>
+                 <h3>Thank you for completing the assessment.</h3>
+                 <p>Your results have been securely recorded. Our HR team will review your performance and resume scores.</p>
+                 <p>You will receive an email update regarding the next steps shortly.</p>
+             </div>
+             """, unsafe_allow_html=True)
+             
+             if st.button("Logout"):
+                 st.session_state.test_session = None
+                 st.session_state.test_stage = 'login'
+                 st.rerun()
 
     # ---------------- CANDIDATE VIEW ----------------
     # ---------------- CANDIDATE VIEW (MODERN JOB BOARD) ----------------
@@ -928,6 +1062,7 @@ def main():
                 with st.form("apply_form"):
                     col_a1, col_a2 = st.columns(2)
                     with col_a1:
+                        full_name = st.text_input("Full Name")
                         email = st.text_input("Your Email Address")
                     with col_a2:
                         resume = st.file_uploader("Upload Resume (PDF/DOCX)", type=["pdf", "docx"])
@@ -935,8 +1070,8 @@ def main():
                     st.caption("By applying, you agree to our AI processing your resume.")
                     
                     if st.form_submit_button("Send Application", use_container_width=True):
-                        if not email or not resume:
-                            st.error("Please provide both Email and Resume.")
+                        if not email or not resume or not full_name:
+                            st.error("Please provide Name, Email and Resume.")
                         else:
                             with st.spinner("Analyzing Resume & Sending..."):
                                 # LOGIC: SAVE RESUME
@@ -960,7 +1095,8 @@ def main():
                                 # LOGIC: SAVE APP
                                 new_app = {
                                     "Company": job_data['Company'], 
-                                    "Role": job_data["Role"], 
+                                    "Role": job_data["Role"],
+                                    "Name": full_name,                # <--- FIX: Added Name
                                     "Email": email, 
                                     "Score": score,
                                     "Status": status,                 # <--- FIX: Added Status
@@ -1081,20 +1217,32 @@ def main():
                             with c_p2:
                                 if st.button(f"⚙️ Generate Test", key=f"gen_{idx}"):
                                     with st.spinner("🤖 AI is reading JD & Generating Question Bank..."):
-                                        cnt = generate_question_bank(row['JD'], row['Job_ID'])
+                                        cnt, d_path = generate_question_bank(row['JD'], row['Job_ID'])
                                     
                                     # Update Status
                                     df.at[idx, 'HasQuestions'] = 'Done'
                                     save_data(df)
+                                    
+                                    # Persist Download Link
+                                    if d_path and os.path.exists(d_path):
+                                        st.session_state['latest_doc'] = d_path
+                                    
                                     st.success(f"✅ Generated {cnt} Questions!")
                                     st.rerun()
-                                    
-                                if st.button("Skip", key=f"skip_{idx}"):
-                                    df.at[idx, 'HasQuestions'] = 'Skipped'
-                                    save_data(df)
-                                    st.rerun()
-                            st.divider()
 
+                # --- DOWNLOAD LATEST GENERATED ---
+                if 'latest_doc' in st.session_state:
+                     p = st.session_state['latest_doc']
+                     if os.path.exists(p):
+                         with open(p, "rb") as f:
+                             st.download_button(
+                                 label="📥 Download Generated Question Bank (DOCX)",
+                                 data=f,
+                                 file_name=os.path.basename(p),
+                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                             )
+                     # Optionally clear it after some time or keep it until next generation
+                     
                 with st.expander("➕ Create New Job Opening", expanded=False):
                     with st.form("new_job"):
                         jc1, jc2 = st.columns(2)
