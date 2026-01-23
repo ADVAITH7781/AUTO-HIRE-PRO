@@ -897,11 +897,6 @@ def main():
     </div>
     
     <hr style="border:0; border-top:1px solid #e2e8f0;">
-    
-    <div style="height: 300px; overflow-y: auto; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #f1f5f9;">
-        <p style="white-space: pre-wrap; color: #334155; font-family: sans-serif;">{job_data['JD']}</p>
-    </div>
-    <br>
                 """, unsafe_allow_html=True)
                 
                 # Check for Download
