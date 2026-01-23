@@ -712,44 +712,104 @@ def main():
         # Global CSS for this view
         st.markdown("""
         <style>
-            .job-card-container {
-                padding: 15px;
-                border-radius: 10px;
+            /* HIGH END TYPOGRAPHY & LAYOUT */
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+            
+            h1, h2, h3, h4, h5, h6, p, div {
+                font-family: 'Inter', sans-serif;
+            }
+            
+            /* PREMIUM SEARCH BAR */
+            .search-container {
+                max-width: 700px;
+                margin: 0 auto;
                 background: white;
-                border: 1px solid #e2e8f0;
-                margin-bottom: 10px;
+                padding: 10px;
+                border-radius: 50px;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                border: 2px solid transparent;
+                transition: all 0.3s ease;
+            }
+            .search-container:focus-within {
+                border-color: #FF9F1C;
+                box-shadow: 0 20px 25px -5px rgba(255, 159, 28, 0.15), 0 8px 10px -6px rgba(255, 159, 28, 0.1);
+                transform: translateY(-2px);
+            }
+            
+            /* BRANDING HEADER */
+            .hero-header {
+                text-align: center; 
+                margin-top: 2rem; 
+                margin-bottom: 3rem;
+            }
+            .brand-title {
+                font-size: 3.5rem; 
+                font-weight: 800; 
+                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin: 0;
+                letter-spacing: -1px;
+            }
+            .brand-tagline {
+                font-size: 1.2rem; 
+                color: #FF9F1C; 
+                font-weight: 600; 
+                margin-top: 5px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+            }
+            
+            /* JOB CARDS */
+            .job-card-container {
+                padding: 18px;
+                border-radius: 12px;
+                background: white;
+                border: 1px solid #f1f5f9;
+                margin-bottom: 12px;
                 transition: all 0.2s;
+                position: relative;
+                overflow: hidden;
             }
             .job-card-container:hover {
-                border-color: var(--primary);
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                border-color: #FF9F1C;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                background: #fffcf5; /* Subtle orange tint */
             }
-            .company-logo-placeholder {
-                width: 40px; 
-                height: 40px; 
-                background: #f1f5f9; 
-                border-radius: 8px; 
-                display: flex; 
-                align-items: center; 
-                justify_content: center;
-                font-weight: bold;
-                color: var(--primary);
+            .job-card-container::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 4px;
+                background: #FF9F1C;
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+            .job-card-container:hover::before {
+                opacity: 1;
             }
         </style>
         """, unsafe_allow_html=True)
         
-        # 1. Top Bar / Hero Lite
-        st.markdown(f"""
-            <div style="margin-bottom: 2rem;">
-                <h2 style="margin:0;">Find your next <span class="highlight-orange">Opportunity</span></h2>
-                <p style="color: #64748b;">Browse {len(df)} active roles matches to your profile.</p>
+        # 1. CENTERED BRAND HEADER
+        st.markdown("""
+            <div class="hero-header">
+                <h1 class="brand-title">AUTO HIRE PRO</h1>
+                <div class="brand-tagline">Your Future, Automated</div>
             </div>
         """, unsafe_allow_html=True)
         
-        # 2. Search & Filter
-        search_col, _ = st.columns([2, 1])
-        with search_col:
-            query = st.text_input("🔍 Search by Job Title, Company, or Keywords", placeholder="e.g. Data Scientist, Google...")
+        # 2. PREMIUM SEARCH BAR
+        # We wrap the Streamlit input in a styled container to give it that "Floating Search" look
+        col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
+        with col_s2:
+            st.markdown('<div class="search-container">', unsafe_allow_html=True)
+            query = st.text_input("Search Jobs", placeholder="Search by Role, Company, or Keywords...", label_visibility="collapsed")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+        st.markdown("<br><br>", unsafe_allow_html=True)
             
         # Filter Logic
         if not df.empty:
@@ -759,22 +819,23 @@ def main():
                 filtered_df = df
         else:
             filtered_df = pd.DataFrame()
-            st.info("No jobs posted yet.")
 
         # 3. Master-Detail Layout
         col_list, col_detail = st.columns([1.3, 2])
         
         with col_list:
-            st.markdown("### Jobs for you")
             if not filtered_df.empty:
+                st.markdown(f"#### 🎯 {len(filtered_df)} Jobs Found")
                 # Use a radio button to act as the "List Selector"
-                # We create formatted labels for display
                 job_options = filtered_df.apply(lambda x: f"{x['Role']}  @  {x['Company']}", axis=1).tolist()
                 
                 # Logic to keep selection if possible
-                current_idx = 0
                 if 'selected_job_index' not in st.session_state:
                     st.session_state.selected_job_index = 0
+                
+                # Custom Styling for Radio to look like cards handled by CSS above (mostly) but Streamlit radio is tough.
+                # We trust the .stRadio class hooks or just plain look.
+                # Actually, standard radio looks acceptable if we style the container.
                 
                 selected_label = st.radio(
                     "Select a Job", 
@@ -782,12 +843,8 @@ def main():
                     index=0, 
                     label_visibility="collapsed"
                 )
-                
-                # Clean up UI: Add some spacing or "cards" visual (Radio is plain, but functional)
-                # To make it look like cards, we typically stick to HTML/Buttons, but Radio is safer for logic.
-                # Let's keep Radio for V1 Robustness.
             else:
-                st.warning("No matching jobs found.")
+                st.info("No jobs posted yet. Check back soon!")
                 selected_label = None
 
         with col_detail:
