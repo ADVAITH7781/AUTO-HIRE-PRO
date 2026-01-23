@@ -184,8 +184,7 @@ def save_apps(df):
         st.error(f"❌ Error Saving Applications: {e}")
 
 # ---------------- Email Notification ----------------
-def send_email(candidate_email, score, company, role, email_type="success"):
-    token = ""
+def send_email(candidate_email, score, company, role, email_type="success", token=None):
     try:
         sender_email = st.secrets["EMAIL_ADDRESS"]
         password = st.secrets["EMAIL_PASSWORD"]
@@ -194,9 +193,10 @@ def send_email(candidate_email, score, company, role, email_type="success"):
         return ""
 
     if email_type == "success":
-        # Generate Secure Token
-        chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        token = "".join(random.choices(chars, k=6))
+        # Use provided token or generate backup (though caller should provide it)
+        if not token:
+            chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            token = "".join(random.choices(chars, k=6))
         
         subject = f"Congratulations! You've been shortlisted for {role} at {company}"
         heading = "Great News! 🎉"
@@ -940,12 +940,25 @@ def main():
                                 text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_docx(resume)
                                 score = calculate_score(text, job_data["JD"])
                                 
+                                # LOGIC: STATUS & TOKEN
+                                thresh = int(job_data.get("ResumeThreshold", 60))
+                                status = "Shortlisted" if score >= thresh else "Rejected"
+                                
+                                token = ""
+                                if status == "Shortlisted":
+                                    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+                                    token = "".join(random.choices(chars, k=6))
+                                
                                 # LOGIC: SAVE APP
                                 new_app = {
                                     "Company": job_data['Company'], 
                                     "Role": job_data["Role"], 
                                     "Email": email, 
-                                    "Score": score, 
+                                    "Score": score,
+                                    "Status": status,                 # <--- FIX: Added Status
+                                    "TestPassword": token,            # <--- FIX: Added Password
+                                    "TokenTime": datetime.datetime.now(),
+                                    "TestStatus": "Pending",
                                     "Resume_Path": r_path, 
                                     "Timestamp": datetime.datetime.now()
                                 }
@@ -953,11 +966,10 @@ def main():
                                 save_apps(apps_df)
                                 
                                 # LOGIC: EMAIL
-                                thresh = int(job_data.get("ResumeThreshold", 60))
-                                email_type = "success" if score >= thresh else "rejection"
-                                send_email(email, score, job_data['Company'], job_data["Role"], email_type)
+                                email_type = "success" if status == "Shortlisted" else "rejection"
+                                send_email(email, score, job_data['Company'], job_data["Role"], email_type, token=token)
                                 
-                                if score >= thresh:
+                                if status == "Shortlisted":
                                     st.success(f"🎉 Application Sent! Resume Match: {score}/100")
                                     st.balloons()
                                 else:
