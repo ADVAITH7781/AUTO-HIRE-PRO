@@ -183,14 +183,14 @@ def load_apps():
     if os.path.exists(APPS_FILE):
         try:
             df = pd.read_excel(APPS_FILE)
-            cols = ["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"]
+            cols = ["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp", "Job_ID", "ApplicantName"]
             for col in cols:
                 if col not in df.columns: df[col] = ""
             return df
         except Exception:
-            return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"])
+            return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp", "Job_ID", "ApplicantName"])
     else:
-        return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp"])
+        return pd.DataFrame(columns=["Name", "Email", "Score", "Company", "Role", "Status", "Resume_Text", "TestPassword", "TokenTime", "TestScore", "TestStatus", "Resume_Path", "Timestamp", "Job_ID", "ApplicantName"])
 
 def save_apps(df):
     try:
@@ -789,7 +789,12 @@ def main():
                 
                 # Load Questions
                 if 'exam_questions' not in st.session_state:
-                    qs = get_candidate_questions(user['Job_ID'])
+                    # Safe Job ID with Fallback
+                    jid = user.get('Job_ID')
+                    if not jid or pd.isna(jid) or jid == "":
+                        jid = f"{user['Company']}_{user['Role']}".replace(" ", "_")
+                    
+                    qs = get_candidate_questions(jid)
                     if not qs:
                          st.error("Error loading questions.")
                     st.session_state.exam_questions = qs
@@ -1096,7 +1101,8 @@ def main():
                                 new_app = {
                                     "Company": job_data['Company'], 
                                     "Role": job_data["Role"],
-                                    "Name": full_name,                # <--- FIX: Added Name
+                                    "Job_ID": job_data.get("Job_ID", ""), # <--- FIX: Added Job_ID
+                                    "Name": full_name,
                                     "Email": email, 
                                     "Score": score,
                                     "Status": status,                 # <--- FIX: Added Status
