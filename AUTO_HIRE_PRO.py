@@ -659,7 +659,7 @@ def main():
         if 'test_session' not in st.session_state:
             st.session_state.test_session = None
             
-        if not st.session_state.test_session:
+        if st.session_state.test_session is None:
             with st.form("test_login"):
                 st.subheader("Secure Login")
                 email = st.text_input("Registered Email")
