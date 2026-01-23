@@ -700,143 +700,191 @@ def main():
                st.session_state.test_stage = 'rules' # Auto advance if already logged in
                st.rerun()
 
-        # --- STAGE 2: RULES & CAMERA CHECK ---
-        elif st.session_state.test_stage == 'rules':
-            user = st.session_state.test_session
-            st.title(f"Welcome, {user.get('Name', 'Candidate')}")
-            st.info(f"Role: {user['Role']}")
-            
-            st.markdown("""
-            ### 📜 Examination Rules (Strict)
-            1.  **Camera Must Be On**: You must stay in the frame at all times.
-            2.  **No Multiple Faces**: Only you should be visible.
-            3.  **No Looking Away**: Looking left/right frequently is flagged.
-            4.  **No Mobile Phones**: Detected phones will trigger immediate warning.
-            5.  **No Speaking**: Audio environment must be silent.
-            
-            > 🚨 **Critical**: If you receive **5 Warnings**, the test will **Terminate Immediately**.
-            """)
-            
-            metric_col = st.columns(2)
-            metric_col[0].metric("Duration", "45 Minutes")
-            metric_col[1].metric("Strictness", "High")
-            
-            st.markdown("### 📸 System Check")
-            st.write("Please verify your camera is working below. Ensure you are clearly visible.")
-            
-            # Preview Camera
-            webrtc_streamer(key="camera_preview", mode=WebRtcMode.SENDRECV, 
-                          rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                          video_transformer_factory=ProctoringProcessor,
-                          media_stream_constraints={"video": True, "audio": False})
-                          
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("✅ I Agree & Start Test", type="primary"):
-                st.session_state.test_stage = 'exam'
-                st.rerun()
-
-        # --- STAGE 3: EXAM ---
-        # --- STAGE 3: EXAM ---
-        elif st.session_state.test_stage == 'exam':
+        # --- PERSISTENT EXAM ENVIRONMENT (RULES + EXAM) ---
+        elif st.session_state.test_stage in ['rules', 'exam']:
             user = st.session_state.test_session
             
-            # --- JAVASCRIPT PROCTORING ---
-            st.components.v1.html("""
-                <script>
-                document.addEventListener('visibilitychange', function() {
-                    if (document.hidden) {
-                        window.parent.postMessage({type: 'violation', msg: 'Tab Switch Detected!'}, '*');
-                    }
-                });
-                </script>
-            """, height=0)
+            # Shared Layout: Camera Left (1), Content Right (3)
+            p_col, content_col = st.columns([1, 3])
             
-            # Layout
-            p_col, q_col = st.columns([1, 3])
-            
+            # --- PERSISTENT CAMERA (LEFT) ---
             with p_col:
                 st.markdown("### 🛡️ Proctoring")
-                st.caption("Live Monitoring Active")
                 
-                # Live Camera
-                ctx = webrtc_streamer(key="active_proctor", mode=WebRtcMode.SENDRECV,
-                                    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                                    video_transformer_factory=ProctoringProcessor,
-                                    media_stream_constraints={"video": True, "audio": False})
+                # Single Persistent Streamer
+                ctx = webrtc_streamer(
+                    key="universal_proctor", 
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration={
+                        "iceServers": [
+                            {"urls": ["stun:stun.l.google.com:19302"]},
+                            {"urls": ["stun:stun1.l.google.com:19302"]},
+                            {"urls": ["stun:stun2.l.google.com:19302"]}
+                        ]
+                    },
+                    video_transformer_factory=ProctoringProcessor,
+                    media_stream_constraints={"video": True, "audio": False},
+                    async_processing=True
+                )
                 
-                # Status Panel
+                # Warnings (Always Visible)
                 warns = st.session_state.warning_count
                 st.metric("Warnings", f"{warns}/5", delta_color="inverse")
                 
                 if warns >= 3:
                      st.error("⚠️ CRITICAL WARNING")
                      
-                # Update Warning Count from Processor
+                # Update Warning Count (Live)
                 if ctx.video_transformer:
                     new_warns = ctx.video_transformer.warn_count
                     if new_warns > st.session_state.warning_count:
                         st.session_state.warning_count = new_warns
                         st.rerun()
-                        
+                
                 # Auto-Termination Check
                 if st.session_state.warning_count >= 5:
                     st.session_state.test_stage = 'terminated'
                     st.rerun()
 
-            with q_col:
-                st.title(f"📝 Aptitude Test: {user['Role']}")
-                st.info("Answer all questions. Do not switch tabs.")
+            # --- DYNAMIC CONTENT (RIGHT) ---
+            with content_col:
                 
-                # Load Questions
-                if 'exam_questions' not in st.session_state:
-                    # Safe Job ID with Fallback
-                    jid = user.get('Job_ID')
-                    if not jid or pd.isna(jid) or jid == "":
-                        jid = f"{user['Company']}_{user['Role']}".replace(" ", "_")
+                # SUB-STAGE: RULES
+                if st.session_state.test_stage == 'rules':
+                    st.title(f"Welcome, {user.get('Name', 'Candidate')}")
+                    st.info(f"Role: {user['Role']}")
                     
-                    qs = get_candidate_questions(jid)
-                    if not qs:
-                         st.error("Error loading questions.")
-                    st.session_state.exam_questions = qs
-                
-                questions = st.session_state.exam_questions
-                
-                if questions:
-                    with st.form("exam_submission"):
-                        answers = {}
-                        for i, q in enumerate(questions):
-                            st.markdown(f"**Q{i+1}. {q.get('q')}**")
-                            # Sanitize options
-                            opts = q.get('options', [])
-                            ans = st.radio(f"Select Answer for Q{i+1}", opts, key=f"q_{i}", index=None)
-                            answers[i] = ans
-                            st.divider()
-                        
-                        if st.form_submit_button("Submit Test"):
-                            # Calculate Score
-                            raw_score = 0
-                            total = len(questions)
-                            
-                            for i, q in enumerate(questions):
-                                user_ans = str(answers.get(i)).strip()
-                                correct = str(q.get('answer')).strip()
-                                
-                                # Flexible match
-                                if user_ans == correct:
-                                    raw_score += 1
-                                elif user_ans in correct or correct in user_ans:
-                                    if len(user_ans) > 5 and len(correct) > 5: raw_score += 1
-                            
-                            # Save Results
-                            idx = apps_df[apps_df['Email'] == user['Email']].index
-                            if not idx.empty:
-                                apps_df.at[idx[0], 'TestScore'] = raw_score # Raw Score (x/Total)
-                                apps_df.at[idx[0], 'TestStatus'] = 'Completed'
-                                save_apps(apps_df)
-                            
-                            st.session_state.test_stage = 'submitted'
+                    st.markdown("""
+                    ### 📜 Examination Rules (Strict)
+                    1.  **Camera Must Be On**: You must stay in the frame at all times.
+                    2.  **No Multiple Faces**: Only you should be visible.
+                    3.  **No Looking Away**: Looking left/right frequently is flagged.
+                    4.  **No Mobile Phones**: Detected phones will trigger immediate warning.
+                    
+                    > 🚨 **Critical**: If you receive **5 Warnings**, the test will **Terminate Immediately**.
+                    """)
+                    
+                    st.warning("Please wait for the camera to connect on the left.")
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # --- STEP 1: FULL SCREEN JS ---
+                    st.markdown("""
+                    <script>
+                    function openFullscreen() {
+                      var elem = window.parent.document.documentElement;
+                      if (elem.requestFullscreen) {
+                        elem.requestFullscreen();
+                      } else if (elem.webkitRequestFullscreen) { /* Safari */
+                        elem.webkitRequestFullscreen();
+                      } else if (elem.msRequestFullscreen) { /* IE11 */
+                        elem.msRequestFullscreen();
+                      }
+                    }
+                    </script>
+                    """, unsafe_allow_html=True)
+                    
+                    # Custom HTML Button because Streamlit buttons can't trigger JS direct
+                    st.components.v1.html("""
+                    <style>
+                        .btn-fs {
+                            background-color: #334155; 
+                            color: white; 
+                            padding: 12px 24px; 
+                            border: none; 
+                            border-radius: 8px; 
+                            font-family: sans-serif; 
+                            font-weight: bold; 
+                            cursor: pointer;
+                            width: 100%;
+                            transition: background 0.3s;
+                        }
+                        .btn-fs:hover { background-color: #475569; }
+                    </style>
+                    <button class="btn-fs" onclick="try{window.parent.document.documentElement.requestFullscreen()}catch(e){alert('Please press F11 for Full Screen')}" >
+                        ⛶ STEP 1: ENABLE FULL SCREEN
+                    </button>
+                    """, height=60)
+
+                    # --- STEP 2: START ---
+                    st.markdown("Once in Full Screen, click below:")
+                    
+                    # Strict Camera Check
+                    if ctx.state.playing:
+                        st.success("✅ Camera Connected & Secure")
+                        # Start Button (only moves stage, camera stays)
+                        if st.button("✅ Step 2: I Agree & Start Test", type="primary"):
+                            st.session_state.test_stage = 'exam'
                             st.rerun()
-                
+                    else:
+                        st.warning("⚠️ Waiting for Camera to Initialize...")
+                        st.info("Please click 'SELECT DEVICE' or 'START' on the left side first.")
+
+                # SUB-STAGE: EXAM Questons
+                elif st.session_state.test_stage == 'exam':
+                    # JS Proctoring Injection
+                    st.components.v1.html("""
+                        <script>
+                        document.addEventListener('visibilitychange', function() {
+                            if (document.hidden) {
+                                window.parent.postMessage({type: 'violation', msg: 'Tab Switch Detected!'}, '*');
+                            }
+                        });
+                        </script>
+                    """, height=0)
+                    
+                    st.title(f"📝 Aptitude Test: {user['Role']}")
+                    st.caption("Answer all questions. Do not switch tabs.")
+                    
+                    # Load Questions
+                    if 'exam_questions' not in st.session_state:
+                         jid = user.get('Job_ID')
+                         if not jid or pd.isna(jid) or jid == "":
+                             jid = f"{user['Company']}_{user['Role']}".replace(" ", "_")
+                         
+                         qs = get_candidate_questions(jid)
+                         # Fallback
+                         if not qs:
+                              st.error("No questions found. Contact Admin.")
+                         else:
+                              st.session_state.exam_questions = qs
+                    
+                    questions = st.session_state.exam_questions or []
+                    
+                    if questions:
+                        with st.form("exam_submission"):
+                            answers = {}
+                            for i, q in enumerate(questions):
+                                st.markdown(f"**Q{i+1}. {q.get('q')}**")
+                                opts = q.get('options', [])
+                                ans = st.radio(f"Select Answer", opts, key=f"q_{i}", label_visibility="collapsed")
+                                answers[i] = ans
+                                st.divider()
+                            
+                            if st.form_submit_button("Submit Test"):
+                                # Calculate Score
+                                raw_score = 0
+                                total = len(questions)
+                                for i, q in enumerate(questions):
+                                    user_ans = str(answers.get(i)).strip()
+                                    correct = str(q.get('answer')).strip()
+                                    if user_ans == correct:
+                                        raw_score += 1
+                                    elif user_ans in correct or correct in user_ans:
+                                        if len(user_ans) > 5 and len(correct) > 5: raw_score += 1
+                                
+                                # Save Results
+                                idx = apps_df[apps_df['Email'] == user['Email']].index
+                                if not idx.empty:
+                                    apps_df.at[idx[0], 'TestScore'] = raw_score 
+                                    apps_df.at[idx[0], 'TestStatus'] = 'Completed'
+                                    save_apps(apps_df)
+                                
+                                st.session_state.test_stage = 'submitted'
+                                st.rerun()
+
+        # --- STAGE 3: EXAM ---
+        # --- STAGE 3: EXAM ---
+
         # --- STAGE 4: TERMINATED ---
         elif st.session_state.test_stage == 'terminated':
              st.error("TEST TERMINATED")
