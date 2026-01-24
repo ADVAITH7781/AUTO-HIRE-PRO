@@ -656,29 +656,29 @@ def main():
             data = base64.b64encode(f.read()).decode()
         hero_src = f"data:image/png;base64,{data}"
 
-        st.markdown(textwrap.dedent(f"""
-        <div class="hero-container">
-            <img src="{hero_src}" class="hero-bg">
-            <div class="hero-overlay">
-                <div style="font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Auto Hire Pro</div>
-                <h1>Surpass your resume through our <span class="hero-highlight">Tailored AI</span></h1>
-                <p>
-                    Get updates quicker and optimize your career path. 
-                    Our intelligent engine analyzes over 50 data points to match you with the perfect role instantly.
-                </p>
-                
-                 <!-- Search is injected via Streamlit columns below to allow interactivity -->
-                 <div style="height: 100px;"></div> 
-                 
-                 <div class="trending-chips">
-                    <span style="font-size:0.9rem; color:#64748B; margin-right:5px;">Trending:</span>
-                    <span class="chip">Web Designer</span>
-                    <span class="chip">Python Dev</span>
-                    <span class="chip">iOS Engineer</span>
-                 </div>
-            </div>
-        </div>
-        """), unsafe_allow_html=True)
+        st.markdown(f"""
+<div class="hero-container">
+    <img src="{hero_src}" class="hero-bg">
+    <div class="hero-overlay">
+        <div style="font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Auto Hire Pro</div>
+        <h1>Surpass your resume through our <span class="hero-highlight">Tailored AI</span></h1>
+        <p>
+            Get updates quicker and optimize your career path. 
+            Our intelligent engine analyzes over 50 data points to match you with the perfect role instantly.
+        </p>
+        
+         <!-- Search is injected via Streamlit columns below to allow interactivity -->
+         <div style="height: 100px;"></div> 
+         
+         <div class="trending-chips">
+            <span style="font-size:0.9rem; color:#64748B; margin-right:5px;">Trending:</span>
+            <span class="chip">Web Designer</span>
+            <span class="chip">Python Dev</span>
+            <span class="chip">iOS Engineer</span>
+         </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
         
         # 2. INTERACTIVE SEARCH (Floated over Hero via negative margin hack or just placed below title)
         # To make it truly "inside" the hero using pure Streamlit is hard without component isolation.
@@ -709,12 +709,12 @@ def main():
         st.sidebar.empty() # Hide Sidebar in Test Mode
     else:
         with st.sidebar:
-            st.markdown(f"""
-                <div style="padding: 1rem 0;">
-                    <h2 style="color: var(--primary); margin:0;">Auto Hire<span style="color:#0F172A">Pro</span></h2>
-                    <p style="color: var(--text-light); font-size: 0.875rem;">Intelligent Hiring Platform</p>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""
+<div style="padding: 1rem 0;">
+    <h2 style="color: var(--primary); margin:0;">Auto Hire<span style="color:#0F172A">Pro</span></h2>
+    <p style="color: var(--text-light); font-size: 0.875rem;">Intelligent Hiring Platform</p>
+</div>
+""", unsafe_allow_html=True)
             
             mode = st.radio("Workspace", ["Job Seekers", "Admin Dashboard"], label_visibility="collapsed")
 
@@ -1103,11 +1103,11 @@ def main():
         
         # 1. NEW COMPACT HERO (HTML Injection)
         st.markdown("""
-        <section class="hero">
-          <h1>AUTO HIRE PRO</h1>
-          <h2>Your Future, Automated</h2>
-        </section>
-        """, unsafe_allow_html=True)
+<section class="hero">
+  <h1>AUTO HIRE PRO</h1>
+  <h2>Your Future, Automated</h2>
+</section>
+""", unsafe_allow_html=True)
         
         # 2. SEARCH BAR (HTML Container + Streamlit Input)
         # Using the exact .search-box class from user's CSS
@@ -1245,40 +1245,40 @@ def main():
         # 3. JOB CATEGORIES
         st.markdown("<h3 class='section-title'>Job Categories</h3>", unsafe_allow_html=True)
         
-        st.markdown(textwrap.dedent("""
-        <div class="cat-grid">
-            <div class="cat-card">
-                <div class="cat-icon">💻</div>
-                <div style="font-weight:600;">Development</div>
-                <div style="font-size:0.8rem; color:#64748B;">120 Jobs</div>
-            </div>
-            <div class="cat-card">
-                <div class="cat-icon">🎨</div>
-                <div style="font-weight:600;">Design</div>
-                <div style="font-size:0.8rem; color:#64748B;">85 Jobs</div>
-            </div>
-            <div class="cat-card">
-                <div class="cat-icon">📢</div>
-                <div style="font-weight:600;">Marketing</div>
-                <div style="font-size:0.8rem; color:#64748B;">40 Jobs</div>
-            </div>
-            <div class="cat-card">
-                <div class="cat-icon">💰</div>
-                <div style="font-weight:600;">Finance</div>
-                <div style="font-size:0.8rem; color:#64748B;">32 Jobs</div>
-            </div>
-            <div class="cat-card">
-                <div class="cat-icon">🏥</div>
-                <div style="font-weight:600;">Health</div>
-                <div style="font-size:0.8rem; color:#64748B;">15 Jobs</div>
-            </div>
-            <div class="cat-card">
-                <div class="cat-icon">🎓</div>
-                <div style="font-weight:600;">Internship</div>
-                <div style="font-size:0.8rem; color:#64748B;">50 Jobs</div>
-            </div>
-        </div>
-        """), unsafe_allow_html=True)
+        st.markdown("""
+<div class="cat-grid">
+    <div class="cat-card">
+        <div class="cat-icon">💻</div>
+        <div style="font-weight:600;">Development</div>
+        <div style="font-size:0.8rem; color:#64748B;">120 Jobs</div>
+    </div>
+    <div class="cat-card">
+        <div class="cat-icon">🎨</div>
+        <div style="font-weight:600;">Design</div>
+        <div style="font-size:0.8rem; color:#64748B;">85 Jobs</div>
+    </div>
+    <div class="cat-card">
+        <div class="cat-icon">📢</div>
+        <div style="font-weight:600;">Marketing</div>
+        <div style="font-size:0.8rem; color:#64748B;">40 Jobs</div>
+    </div>
+    <div class="cat-card">
+        <div class="cat-icon">💰</div>
+        <div style="font-weight:600;">Finance</div>
+        <div style="font-size:0.8rem; color:#64748B;">32 Jobs</div>
+    </div>
+    <div class="cat-card">
+        <div class="cat-icon">🏥</div>
+        <div style="font-weight:600;">Health</div>
+        <div style="font-size:0.8rem; color:#64748B;">15 Jobs</div>
+    </div>
+    <div class="cat-card">
+        <div class="cat-icon">🎓</div>
+        <div style="font-weight:600;">Internship</div>
+        <div style="font-size:0.8rem; color:#64748B;">50 Jobs</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
         # 4. LATEST JOBS GRID (Visual Only - data from DF if available)
         st.markdown("<h3 class='section-title'>Recent Jobs</h3>", unsafe_allow_html=True)
@@ -1291,52 +1291,52 @@ def main():
             cols = st.columns(4)
             for idx, (i, row) in enumerate(jobs_to_show.iterrows()):
                 with cols[idx % 4]:
-                    st.markdown(textwrap.dedent(f"""
-                    <div class="feat-card">
-                        <div class="feat-heart">❤</div>
-                        <div class="feat-logo">🏢</div>
-                        <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">{row['Role']}</div>
-                        <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">{row['Company']}</div>
-                        <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
-                        <br>
-                        <div style="margin-top:15px; color:var(--orange); font-weight:600; cursor:pointer;">Apply Now</div>
-                    </div>
-                    """), unsafe_allow_html=True)
+                    st.markdown(f"""
+<div class="feat-card">
+    <div class="feat-heart">❤</div>
+    <div class="feat-logo">🏢</div>
+    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">{row['Role']}</div>
+    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">{row['Company']}</div>
+    <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
+    <br>
+    <div style="margin-top:15px; color:var(--orange); font-weight:600; cursor:pointer;">Apply Now</div>
+</div>
+""", unsafe_allow_html=True)
         else:
-             st.markdown(textwrap.dedent("""
-            <div class="featured-grid">
-                <!-- Placeholder 1 -->
-                <div class="feat-card">
-                    <div class="feat-heart">❤</div>
-                    <div class="feat-logo">💡</div>
-                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Product Designer</div>
-                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">Creative Agency, NY</div>
-                    <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
-                    <br>
-                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
-                </div>
-                <!-- Placeholder 2 -->
-                <div class="feat-card">
-                    <div class="feat-heart">❤</div>
-                    <div class="feat-logo">⚡</div>
-                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Software Engineer</div>
-                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">TechFlow, SF</div>
-                    <span class="badge" style="background:#fefce8; color:#854d0e;">PART TIME</span>
-                     <br>
-                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
-                </div>
-                 <!-- Placeholder 3 -->
-                <div class="feat-card">
-                    <div class="feat-heart">❤</div>
-                    <div class="feat-logo">📊</div>
-                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Data Analyst</div>
-                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">FinCorp, London</div>
-                    <span class="badge" style="background:#eff6ff; color:#1e40af;">REMOTE</span>
-                     <br>
-                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
-                </div>
-            </div>
-            """), unsafe_allow_html=True)
+             st.markdown("""
+<div class="featured-grid">
+    <!-- Placeholder 1 -->
+    <div class="feat-card">
+        <div class="feat-heart">❤</div>
+        <div class="feat-logo">💡</div>
+        <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Product Designer</div>
+        <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">Creative Agency, NY</div>
+        <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
+        <br>
+        <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+    </div>
+    <!-- Placeholder 2 -->
+    <div class="feat-card">
+        <div class="feat-heart">❤</div>
+        <div class="feat-logo">⚡</div>
+        <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Software Engineer</div>
+        <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">TechFlow, SF</div>
+        <span class="badge" style="background:#fefce8; color:#854d0e;">PART TIME</span>
+         <br>
+        <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+    </div>
+     <!-- Placeholder 3 -->
+    <div class="feat-card">
+        <div class="feat-heart">❤</div>
+        <div class="feat-logo">📊</div>
+        <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Data Analyst</div>
+        <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">FinCorp, London</div>
+        <span class="badge" style="background:#eff6ff; color:#1e40af;">REMOTE</span>
+         <br>
+        <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
         st.markdown("<br><br>", unsafe_allow_html=True)
         
@@ -1346,40 +1346,40 @@ def main():
         c1, c2, c3, c4 = st.columns(4)
         
         with c1:
-            st.markdown(textwrap.dedent("""
-            <div class="step-card">
-                <div class="step-number">1</div>
-                <h3>1. Search</h3>
-                <p>Browse thousands of curated jobs.</p>
-            </div>
-            """), unsafe_allow_html=True)
+            st.markdown("""
+<div class="step-card">
+    <div class="step-number">1</div>
+    <h3>1. Search</h3>
+    <p>Browse thousands of curated jobs.</p>
+</div>
+""", unsafe_allow_html=True)
             
         with c2:
-            st.markdown(textwrap.dedent("""
-            <div class="step-card">
-                <div class="step-number">2</div>
-                <h3>2. Analyze</h3>
-                <p>Upload resume for AI compatibility check.</p>
-            </div>
-            """), unsafe_allow_html=True)
+            st.markdown("""
+<div class="step-card">
+    <div class="step-number">2</div>
+    <h3>2. Analyze</h3>
+    <p>Upload resume for AI compatibility check.</p>
+</div>
+""", unsafe_allow_html=True)
             
         with c3:
-            st.markdown(textwrap.dedent("""
-            <div class="step-card">
-                <div class="step-number">3</div>
-                <h3>3. Apply</h3>
-                <p>One-click application with optimized profile.</p>
-            </div>
-            """), unsafe_allow_html=True)
+            st.markdown("""
+<div class="step-card">
+    <div class="step-number">3</div>
+    <h3>3. Apply</h3>
+    <p>One-click application with optimized profile.</p>
+</div>
+""", unsafe_allow_html=True)
             
         with c4:
-            st.markdown(textwrap.dedent("""
-            <div class="step-card">
-                <div class="step-number">4</div>
-                <h3>4. Interview</h3>
-                <p>Get shortlisted and receive interview calls.</p>
-            </div>
-            """), unsafe_allow_html=True)
+            st.markdown("""
+<div class="step-card">
+    <div class="step-number">4</div>
+    <h3>4. Interview</h3>
+    <p>Get shortlisted and receive interview calls.</p>
+</div>
+""", unsafe_allow_html=True)
             
         st.markdown("<br><hr style='border-top: 1px solid #E2E8F0;'><br>", unsafe_allow_html=True)
             
@@ -1605,28 +1605,28 @@ def main():
             
             k1, k2, k3, k4 = st.columns(4)
             with k1:
-                st.markdown(textwrap.dedent(f"""
-                <div class="metric-card">
-                    <div class="metric-val">{len(apps_df)}</div>
-                    <div class="metric-label">Total Candidates</div>
-                </div>
-                """), unsafe_allow_html=True)
+                st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-val">{len(apps_df)}</div>
+    <div class="metric-label">Total Candidates</div>
+</div>
+""", unsafe_allow_html=True)
             with k2:
                 avg = int(apps_df["Score"].mean()) if not apps_df.empty else 0
-                st.markdown(textwrap.dedent(f"""
-                <div class="metric-card">
-                    <div class="metric-val">{avg}%</div>
-                    <div class="metric-label">Avg Quality</div>
-                </div>
-                """), unsafe_allow_html=True)
+                st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-val">{avg}%</div>
+    <div class="metric-label">Avg Quality</div>
+</div>
+""", unsafe_allow_html=True)
             with k3:
                 active_jobs = len(df)
-                st.markdown(textwrap.dedent(f"""
-                <div class="metric-card">
-                    <div class="metric-val">{active_jobs}</div>
-                    <div class="metric-label">Active Roles</div>
-                </div>
-                """), unsafe_allow_html=True)
+                st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-val">{active_jobs}</div>
+    <div class="metric-label">Active Roles</div>
+</div>
+""", unsafe_allow_html=True)
             with k4:
                 # Logout Button styling hack to align with cards
                 st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
