@@ -584,6 +584,7 @@ def main():
         .stTextInput input, .stSelectbox [data-baseweb="select"] {
             border-radius: 8px;
             border: 1px solid #CBD5E1;
+            padding: 0.5rem 1rem;
         }
         .stTextInput input:focus {
             border-color: var(--primary);
@@ -598,26 +599,75 @@ def main():
             font-weight: 600;
             padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
+            font-size: 0.85rem;
         }
         
-        /* Steps */
-        .step-num {
-            width: 40px; 
-            height: 40px; 
-            background: var(--secondary); 
-            color: var(--primary); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 50%;
-            font-weight: bold;
+        /* Metric Card (Recruiter) */
+        .metric-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .metric-val { font-size: 2rem; font-weight: 800; color: #0F172A; }
+        .metric-label { color: #64748B; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Process Step (How It Works) */
+        .process-step {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+            height: 100%;
+        }
+        .process-step:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px rgba(255, 107, 0, 0.1);
+        }
+        .step-icon {
+            font-size: 2rem;
             margin-bottom: 1rem;
+            background: var(--secondary);
+            display: inline-block;
+            padding: 10px;
+            border-radius: 12px;
         }
         
+        /* Job List Item (Master View) */
+        .job-card-item {
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .job-card-item:hover {
+            background-color: #F8FAFC;
+            border-color: #E2E8F0;
+        }
+        .job-card-active {
+            background-color: var(--secondary) !important;
+            border-color: var(--primary) !important;
+        }
+        
+        /* Global Badge */
+        .badge {
+            background: #F1F5F9;
+            color: #475569;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 5px;
+        }
         </style>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     # ---------------- SIDEBAR ----------------
     if st.query_params.get("mode") == "test":
@@ -1022,18 +1072,66 @@ def main():
             <div class="hero-header">
                 <h1 class="brand-title">AUTO HIRE PRO</h1>
                 <div class="brand-tagline">Your Future, Automated</div>
+                <p style="color:#64748B; font-size:1.1rem; max-width:600px; margin: 1rem auto;">
+                    AI-powered job matching that connects the right talent to the right opportunity — faster.
+                </p>
             </div>
         """, unsafe_allow_html=True)
         
         # 2. PREMIUM SEARCH BAR
-        # We wrap the Streamlit input in a styled container to give it that "Floating Search" look
         col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
         with col_s2:
             st.markdown('<div class="search-container">', unsafe_allow_html=True)
-            query = st.text_input("Search Jobs", placeholder="Search by Role, Company, or Keywords...", label_visibility="collapsed")
+            col_in1, col_in2 = st.columns([0.1, 0.9])
+            with col_in1:
+                st.markdown("<div style='text-align:center; padding-top:10px;'>🔍</div>", unsafe_allow_html=True)
+            with col_in2:
+                query = st.text_input("Search Jobs", placeholder="Search by Role, Company, or Keywords...", label_visibility="collapsed")
             st.markdown('</div>', unsafe_allow_html=True)
             
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 3. HOW IT WORKS (4 STEPS)
+        st.markdown("### 🚀 How AutoHire Pro Works")
+        c1, c2, c3, c4 = st.columns(4)
+        
+        with c1:
+            st.markdown("""
+            <div class="process-step">
+                <div class="step-icon">📄</div>
+                <h4>1. Upload Profile</h4>
+                <p style="font-size:0.9rem; color:#64748B;">Instantly parse your resume with AI to extract key skills.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with c2:
+            st.markdown("""
+            <div class="process-step">
+                <div class="step-icon">🧠</div>
+                <h4>2. AI Analysis</h4>
+                <p style="font-size:0.9rem; color:#64748B;">Our engine matches your experience to role requirements.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with c3:
+            st.markdown("""
+            <div class="process-step">
+                <div class="step-icon">📊</div>
+                <h4>3. Instant Feedback</h4>
+                <p style="font-size:0.9rem; color:#64748B;">Get a compatibility score and skill gap insights.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with c4:
+            st.markdown("""
+            <div class="process-step">
+                <div class="step-icon">⚡</div>
+                <h4>4. Smart Apply</h4>
+                <p style="font-size:0.9rem; color:#64748B;">One-click optimized application to recruiters.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown("<br><hr style='border-top: 1px solid #E2E8F0;'><br>", unsafe_allow_html=True)
             
         # Filter Logic
         if not df.empty:
@@ -1234,17 +1332,36 @@ def main():
         else:
             # KPIS
             st.title("Admin Dashboard")
+            st.markdown("<p style='color:#64748B; margin-top:-15px; margin-bottom:30px;'>Overview of recruitment performance.</p>", unsafe_allow_html=True)
+            
             k1, k2, k3, k4 = st.columns(4)
             with k1:
-                st.metric("Total Candidates", len(apps_df))
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-val">{len(apps_df)}</div>
+                    <div class="metric-label">Total Candidates</div>
+                </div>
+                """, unsafe_allow_html=True)
             with k2:
                 avg = int(apps_df["Score"].mean()) if not apps_df.empty else 0
-                st.metric("Avg Quality Score", f"{avg}%")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-val">{avg}%</div>
+                    <div class="metric-label">Avg Quality</div>
+                </div>
+                """, unsafe_allow_html=True)
             with k3:
                 active_jobs = len(df)
-                st.metric("Active Roles", active_jobs)
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-val">{active_jobs}</div>
+                    <div class="metric-label">Active Roles</div>
+                </div>
+                """, unsafe_allow_html=True)
             with k4:
-                if st.button("Logout"):
+                # Logout Button styling hack to align with cards
+                st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+                if st.button("Logout", type="secondary", use_container_width=True):
                     st.session_state.auth = False
                     st.rerun()
 
@@ -1354,36 +1471,55 @@ def main():
             with tab_apps:
                 st.subheader("Incoming Applications")
                 if not apps_df.empty:
-                    # Interactive List
+                    # Interactive List with Badges
                     for i, row in apps_df.sort_values(by="Score", ascending=False).iterrows():
                         with st.container():
-                            c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
-                            with c1:
-                                st.markdown(f"**{row['Name']}**")
-                                st.caption(f"{row['Role']} @ {row['Company']}")
-                            with c2:
-                                color = "green" if row['Score'] >= 70 else "orange" if row['Score'] >= 50 else "red"
-                                st.markdown(f"<span style='color:{color}; font-weight:bold; font-size:1.1em;'>{row['Score']}/100</span>", unsafe_allow_html=True)
-                            with c3:
-                                st.markdown(f"Status: **{row['Status']}**")
-                            with c4:
-                                if row['Status'] != "Shortlisted":
-                                    if st.button(f"Invite & Shortlist", key=f"sl_{i}"):
-                                        token = send_email(row['Email'], row['Score'], row['Company'], row['Role'], "success")
-                                        if token:
-                                            # Update DB
-                                            # We need to find the index in the original dataframe, not the sorted one
-                                            idx = apps_df[apps_df['Email'] == row['Email']].index[0]
-                                            apps_df.at[idx, 'Status'] = 'Shortlisted'
-                                            apps_df.at[idx, 'TestPassword'] = token
-                                            apps_df.at[idx, 'TokenTime'] = pd.Timestamp.now().isoformat()
-                                            save_apps(apps_df)
-                                            st.success(f"Invited {row['Name']}")
-                                            time.sleep(1)
-                                            st.rerun()
-                                else:
-                                    st.success("Invited ✅")
+                            st.markdown(f"""
+                            <div class="job-card-item">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <div style="font-size:1.1rem; font-weight:700; color:#0F172A;">{row['Name']}</div>
+                                        <div style="color:#64748B; font-size:0.9rem;">{row['Role']} @ {row['Company']}</div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <span class="badge" style="background:{'#dcfce7' if row['Score'] > 70 else '#fee2e2'}; color:{'#166534' if row['Score'] > 70 else '#991b1b'}">
+                                            Resume: {row['Score']}%
+                                        </span>
+                                        <span class="badge" style="background:#e0f2fe; color:#075985;">
+                                            Test: {row.get('TestScore', 'Pending')}
+                                        </span>
+                                        <div style="font-size:0.8rem; color:#64748B; margin-top:4px;">{row['Status']}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Expandable Details & Actions
+                            with st.expander("👉 View Details & Actions", expanded=False):
+                                col_d1, col_d2 = st.columns(2)
+                                with col_d1:
+                                    st.write(f"**Email:** {row['Email']}")
+                                    st.write(f"**Applied:** {row.get('Timestamp', '')}")
+                                    if row['Resume_Path'] and os.path.exists(row['Resume_Path']):
+                                        with open(row['Resume_Path'], "rb") as f:
+                                            st.download_button("📥 Download Resume", f, file_name=os.path.basename(row['Resume_Path']), key=f"dl_{i}")
+                                with col_d2:
+                                    # Shortlist Action
+                                    if row['Status'] != "Shortlisted":
+                                        if st.button(f"✨ Invite & Shortlist Candidate", key=f"sl_{i}", type="primary"):
+                                            token = send_email(row['Email'], row['Score'], row['Company'], row['Role'], "success")
+                                            if token:
+                                                apps_df.at[i, 'Status'] = 'Shortlisted'
+                                                apps_df.at[i, 'TestPassword'] = token
+                                                apps_df.at[i, 'TokenTime'] = datetime.datetime.now()
+                                                save_apps(apps_df)
+                                                st.success(f"Invited {row['Name']}!")
+                                                st.rerun()
+                                    else:
+                                        st.success("✅ Candidate Shortlisted")
+                            
                             st.divider()
+
                 else:
                     st.info("No applications received yet.")
 
