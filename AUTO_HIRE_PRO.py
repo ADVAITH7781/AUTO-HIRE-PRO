@@ -538,193 +538,169 @@ def main():
         }
 
         /* ===============================
-           HERO SECTION
+           HERO SECTION (Reference Style)
         ================================ */
 
-        .hero {
-          padding: 80px 40px;
-          text-align: center;
-          background: linear-gradient(140deg, #ffffff 65%, rgba(255,122,0,0.08));
-          border-radius: var(--radius-lg);
-          margin-bottom: 40px;
-          animation: heroEnter 1.4s var(--ease-slow);
+        .hero-container {
+            position: relative;
+            background-color: #fff7ed; /* Fallback */
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 50px;
+            box-shadow: var(--shadow-soft);
         }
-
-        @keyframes heroEnter {
-          from { opacity: 0; transform: translateY(80px); }
-          to { opacity: 1; transform: translateY(0); }
+        
+        /* The Image Background */
+        .hero-bg {
+            width: 100%;
+            height: 500px;
+            object-fit: cover;
+            display: block;
+        }
+        
+        /* The Overlay Content */
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 80px;
         }
 
         .hero h1 {
-          font-size: 58px; /* Slightly smaller for responsive */
+          font-size: 52px;
           font-weight: 800;
-          letter-spacing: 1px;
+          letter-spacing: -1px;
           margin: 0;
-          color: var(--orange);
-        }
-
-        .hero h2 {
-          margin-top: 16px;
-          font-size: 20px;
-          font-weight: 500;
-          color: #64748B;
-        }
-
-        /* ===============================
-           SEARCH BAR
-        ================================ */
-
-        .search-box {
-          max-width: 720px;
-          margin: 40px auto 0;
-          background: var(--white);
-          padding: 10px 30px; /* Adapted for Streamlit input */
-          border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-soft);
-          border: 1px solid transparent;
-          transition: var(--ease-fast);
-        }
-
-        .search-box:hover {
-          transform: scale(1.02);
-          box-shadow: var(--shadow-hover);
+          color: #1e293b;
+          max-width: 600px;
+          line-height: 1.1;
         }
         
-        /* Streamlit Input Override inside Search Box */
-        .search-box .stTextInput input {
-            border: none;
-            box-shadow: none;
-            background: transparent;
-            font-size: 18px;
+        .hero-highlight {
             color: var(--orange);
         }
 
-        /* ===============================
-           STEPS / HOW IT WORKS
-        ================================ */
-        
-        .step-card {
-          background: var(--white);
-          padding: 40px 30px;
-          border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-soft);
-          position: relative;
-          overflow: hidden;
-          height: 100%;
-          border: 1px solid transparent;
-          transition: var(--ease-mid);
-        }
-
-        .step-card::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, transparent, rgba(255,122,0,0.18));
-          opacity: 0;
-          transition: var(--ease-mid);
-        }
-
-        .step-card:hover::before {
-          opacity: 1;
-        }
-
-        .step-card:hover {
-          transform: translateY(-10px) scale(1.02);
-          box-shadow: var(--shadow-hover);
-        }
-
-        .step-number {
-          width: 56px;
-          height: 56px;
-          background: var(--orange);
-          color: var(--white);
-          border-radius: 50%;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 20px;
-          font-size: 24px;
-        }
-
-        /* ===============================
-           JOB LIST
-        ================================ */
-
-        .job-item {
-          background: var(--white);
-          padding: 24px;
-          border-radius: var(--radius-md);
-          margin-bottom: 18px;
-          cursor: pointer;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-          border: 1px solid transparent;
-          transition: var(--ease-fast);
-        }
-
-        .job-item:hover {
-          background: var(--orange-soft);
-          transform: translateX(10px);
-          border-color: var(--orange);
+        .hero p {
+          margin-top: 20px;
+          font-size: 18px;
+          color: #64748B;
+          max-width: 550px;
+          line-height: 1.6;
+          font-weight: 500;
         }
         
-        .job-details-container {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-soft);
-            padding: 40px;
-            animation: slideIn 0.9s var(--ease-slow);
+        /* Search Box inside Hero */
+        .hero-search {
+            background: white;
+            padding: 10px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            max-width: 500px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #e2e8f0;
         }
         
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(100px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-
-        /* ===============================
-           ADMIN DASHBOARD
-        ================================ */
-
-        .metric-card {
-          background: var(--white);
-          padding: 38px;
-          border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-soft);
-          text-align: center;
-          height: 100%;
-          transition: var(--ease-fast);
-        }
-
-        .metric-card:hover {
-          transform: translateY(-14px);
-          box-shadow: var(--shadow-hover);
-        }
-
-        .metric-value {
-          font-size: 44px;
-          font-weight: 800;
-          margin-top: 12px;
-          color: var(--orange);
+        .trending-chips {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
-        .metric-label {
-            color: #64748B;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-        
-        /* Badge Override */
-        .badge {
-            padding: 6px 12px;
+        .chip {
+            background: rgba(255,122,0,0.1);
+            color: var(--orange);
+            padding: 5px 12px;
             border-radius: 20px;
-            font-weight: 600;
             font-size: 0.8rem;
+            font-weight: 600;
         }
 
-        </style>
+        /* ===============================
+           SEARCH BAR OVERRIDES
+        ================================ */
+        .hero-search .stTextInput {
+            width: 100%;
+        }
+        .hero-search .stTextInput > div > div {
+            border: none;
+            background: transparent;
+            box-shadow: none;
+        }
+        .hero-search input {
+            padding-left: 10px;
+        }
+
     """, unsafe_allow_html=True)
+        
+    # 1. REFERENCE STYLE HERO (Image + Overlay)
+    
+    # Check if Hero Image exists
+    hero_img_path = "hero_image.png"
+    if not os.path.exists(hero_img_path):
+        # Fallback if image move failed, use placeholder URL
+        hero_src = "https://images.unsplash.com/photo-1497215728101-856f4ea42174?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+    else:
+        # Base64 encode local image
+        import base64
+        with open(hero_img_path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        hero_src = f"data:image/png;base64,{data}"
+
+        st.markdown(f"""
+        <div class="hero-container">
+            <img src="{hero_src}" class="hero-bg">
+            <div class="hero-overlay">
+                <div style="font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Auto Hire Pro</div>
+                <h1>Surpass your resume through our <span class="hero-highlight">Tailored AI</span></h1>
+                <p>
+                    Get updates quicker and optimize your career path. 
+                    Our intelligent engine analyzes over 50 data points to match you with the perfect role instantly.
+                </p>
+                
+                 <!-- Search is injected via Streamlit columns below to allow interactivity -->
+                 <div style="height: 100px;"></div> 
+                 
+                 <div class="trending-chips">
+                    <span style="font-size:0.9rem; color:#64748B; margin-right:5px;">Trending:</span>
+                    <span class="chip">Web Designer</span>
+                    <span class="chip">Python Dev</span>
+                    <span class="chip">iOS Engineer</span>
+                 </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 2. INTERACTIVE SEARCH (Floated over Hero via negative margin hack or just placed below title)
+        # To make it truly "inside" the hero using pure Streamlit is hard without component isolation.
+        # We will use a negative margin container to pull it up into the Hero Overlay space.
+        
+        st.markdown("""
+        <style>
+        div[data-testid="stVerticalBlock"] > div:has(div.stTextInput) {
+            position: relative;
+            z-index: 999;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Floating Search Box
+        col_h1, col_h2 = st.columns([0.4, 0.6]) # Left align to match text
+        with col_h1:
+             st.markdown('<div style="margin-top: -260px; margin-left: 80px; margin-bottom: 200px; background:white; padding:15px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+             query = st.text_input("Search", placeholder="Job title, keywords...", label_visibility="collapsed")
+             st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
 
     # ---------------- SIDEBAR ----------------
     if st.query_params.get("mode") == "test":
@@ -1143,21 +1119,237 @@ def main():
                 query = st.text_input("Hehe", placeholder="Search by role, company, or keywords…", label_visibility="collapsed")
             st.markdown('</div>', unsafe_allow_html=True)
             
-        st.markdown("<br><br>", unsafe_allow_html=True)
-
-        # 3. HOW IT WORKS (STEPS GRID)
-        st.markdown("### 🚀 How AutoHire Pro Works")
+        st.markdown("""
+        <style>
+        /* ===============================
+           CATEGORIES & GRID
+        ================================ */
+        .section-title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 40px;
+        }
         
-        # User's CSS uses a grid, but Streamlit requires columns.
-        # We will use columns to mimic the grid layout while using the user's card classes.
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 60px;
+        }
+        
+        .cat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .cat-card:hover {
+            border-color: var(--orange);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        .cat-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: inline-block;
+            background: #fff7ed;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            border-radius: 50%;
+            color: var(--orange);
+        }
+        
+        /* FEATURED JOBS GRID */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+        
+        .feat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .feat-card:hover {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            transform: translateY(-5px);
+        }
+        
+        .feat-logo {
+            width: 60px;
+            height: 60px;
+            background: #f8fafc;
+            border-radius: 50%;
+            margin: 0 auto 15px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .feat-heart {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #cbd5e1;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        .feat-heart:hover { color: var(--orange); }
+        
+        .feat-btn {
+            border: 1px solid var(--orange);
+            color: var(--orange);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            display: inline-block;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .feat-btn:hover {
+            background: var(--orange);
+            color: white;
+        }
+
+        </style>
+    """, unsafe_allow_html=True)
+        
+        # 1. REFERENCE STYLE HERO (Image + Overlay)
+        # ... (Existing Hero Code) ...
+        # (Assuming Hero is already rendered by previous step, we are replacing the CSS block + inserting content below Hero)
+        # Wait, I need to be careful not to overwrite the Hero HTML I just added if I select lines 1086+
+        # But this edit targets the CSS block earlier in the file? 
+        # No, the 'Reference Style Hero' edit was at line 538+.
+        # This edit targets the 'How it Works' section around 1155.
+        
+        # Actually, let's inject the Categories and Grid *after* the Hero Search (which was around line 1115 in previous version)
+        # and *before* 'How It Works'.
+        
+        # 3. JOB CATEGORIES
+        st.markdown("<h3 class='section-title'>Job Categories</h3>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="cat-grid">
+            <div class="cat-card">
+                <div class="cat-icon">💻</div>
+                <div style="font-weight:600;">Development</div>
+                <div style="font-size:0.8rem; color:#64748B;">120 Jobs</div>
+            </div>
+            <div class="cat-card">
+                <div class="cat-icon">🎨</div>
+                <div style="font-weight:600;">Design</div>
+                <div style="font-size:0.8rem; color:#64748B;">85 Jobs</div>
+            </div>
+            <div class="cat-card">
+                <div class="cat-icon">📢</div>
+                <div style="font-weight:600;">Marketing</div>
+                <div style="font-size:0.8rem; color:#64748B;">40 Jobs</div>
+            </div>
+            <div class="cat-card">
+                <div class="cat-icon">💰</div>
+                <div style="font-weight:600;">Finance</div>
+                <div style="font-size:0.8rem; color:#64748B;">32 Jobs</div>
+            </div>
+            <div class="cat-card">
+                <div class="cat-icon">🏥</div>
+                <div style="font-weight:600;">Health</div>
+                <div style="font-size:0.8rem; color:#64748B;">15 Jobs</div>
+            </div>
+            <div class="cat-card">
+                <div class="cat-icon">🎓</div>
+                <div style="font-weight:600;">Internship</div>
+                <div style="font-size:0.8rem; color:#64748B;">50 Jobs</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 4. LATEST JOBS GRID (Visual Only - data from DF if available)
+        st.markdown("<h3 class='section-title'>Recent Jobs</h3>", unsafe_allow_html=True)
+        
+        # Show real data if available, else placeholders
+        jobs_to_show = df.head(4) if not df.empty else []
+        
+        # Only show grid if we have data, otherwise placeholders
+        if not df.empty:
+            cols = st.columns(4)
+            for idx, (i, row) in enumerate(jobs_to_show.iterrows()):
+                with cols[idx % 4]:
+                    st.markdown(f"""
+                    <div class="feat-card">
+                        <div class="feat-heart">❤</div>
+                        <div class="feat-logo">🏢</div>
+                        <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">{row['Role']}</div>
+                        <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">{row['Company']}</div>
+                        <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
+                        <br>
+                        <div style="margin-top:15px; color:var(--orange); font-weight:600; cursor:pointer;">Apply Now</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+             st.markdown("""
+            <div class="featured-grid">
+                <!-- Placeholder 1 -->
+                <div class="feat-card">
+                    <div class="feat-heart">❤</div>
+                    <div class="feat-logo">💡</div>
+                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Product Designer</div>
+                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">Creative Agency, NY</div>
+                    <span class="badge" style="background:#f0fdf4; color:#166534;">FULL TIME</span>
+                    <br>
+                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+                </div>
+                <!-- Placeholder 2 -->
+                <div class="feat-card">
+                    <div class="feat-heart">❤</div>
+                    <div class="feat-logo">⚡</div>
+                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Software Engineer</div>
+                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">TechFlow, SF</div>
+                    <span class="badge" style="background:#fefce8; color:#854d0e;">PART TIME</span>
+                     <br>
+                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+                </div>
+                 <!-- Placeholder 3 -->
+                <div class="feat-card">
+                    <div class="feat-heart">❤</div>
+                    <div class="feat-logo">📊</div>
+                    <div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">Data Analyst</div>
+                    <div style="color:#64748B; font-size:0.9rem; margin-bottom:15px;">FinCorp, London</div>
+                    <span class="badge" style="background:#eff6ff; color:#1e40af;">REMOTE</span>
+                     <br>
+                    <div style="margin-top:15px; color:var(--orange); font-weight:600;">Apply Now</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        
+        # 5. HOW IT WORKS (Keep existing logic but ensure spacing)
+        st.markdown("### 🚀 Resources & Process")
+        
         c1, c2, c3, c4 = st.columns(4)
         
         with c1:
             st.markdown("""
             <div class="step-card">
                 <div class="step-number">1</div>
-                <h3>Upload Profile</h3>
-                <p>Resume parsing with instant extraction.</p>
+                <h3>1. Search</h3>
+                <p>Browse thousands of curated jobs.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1165,8 +1357,8 @@ def main():
             st.markdown("""
             <div class="step-card">
                 <div class="step-number">2</div>
-                <h3>AI Analysis</h3>
-                <p>Skill, experience & role compatibility scoring.</p>
+                <h3>2. Analyze</h3>
+                <p>Upload resume for AI compatibility check.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1174,19 +1366,17 @@ def main():
             st.markdown("""
             <div class="step-card">
                 <div class="step-number">3</div>
-                <h3>Instant Feedback</h3>
-                <p>Match score & next-step recommendations.</p>
+                <h3>3. Apply</h3>
+                <p>One-click application with optimized profile.</p>
             </div>
             """, unsafe_allow_html=True)
             
         with c4:
-            # Added 'future-panel' logic via opacity if needed, 
-            # for now standard card as per our 4-step logic
             st.markdown("""
             <div class="step-card">
                 <div class="step-number">4</div>
-                <h3>Smart Apply</h3>
-                <p>One-click AI-optimized applications.</p>
+                <h3>4. Interview</h3>
+                <p>Get shortlisted and receive interview calls.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1202,6 +1392,7 @@ def main():
             filtered_df = pd.DataFrame()
 
         # 3. Master-Detail Layout
+        st.markdown("<h3 class='section-title' style='text-align:left; margin-top:20px;'>📋 All Job Openings</h3>", unsafe_allow_html=True)
         col_list, col_detail = st.columns([1.3, 2])
         
         with col_list:
